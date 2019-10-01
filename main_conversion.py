@@ -14,7 +14,7 @@ from force_field_construction import UFF
 
 force_fields = ['UFF']
 
-def serial_conversion(directory, force_field=UFF, outdir='unopt_lammps_data', charges=False, parallel=False):
+def serial_conversion(directory, force_field=UFF, outdir='unopt_lammps_data', charges=False, parallel=False, replication='1x1x1'):
 
 	try:
 		os.mkdir(outdir)
@@ -26,7 +26,11 @@ def serial_conversion(directory, force_field=UFF, outdir='unopt_lammps_data', ch
 	cifs = sorted(glob.glob(directory + os.sep + '*.cif'))
 	for cif in cifs:
 		print('converting ', cif, '...')
-		lammps_inputs([cif, force_field, outdir, charges])
+		#try:
+		lammps_inputs([cif, force_field, outdir, charges, replication])
+		#except:
+		#	print('ERROR during converion of', cif)
+		#	continue
 
 	print('--- cifs in', directory, 'converted and placed in', outdir, '---')
 

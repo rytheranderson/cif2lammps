@@ -102,13 +102,9 @@ def GULP_inputs(args):
 		gin.write('library uff4mof.lib\n')
 		gin.write('uff_bondorder custom 0.001\n')
 		gin.write('maxcyc 10000\n')
-		gin.write('output xyz ' + 'OPT_' + preffix + '.xyz' + '\n')
+		gin.write('output cif ' + 'OPT_' + preffix + '.cif' + '\n')
 
-import glob
-
-for cif in glob.glob('unopt_cifs/*.cif'):
-	if '8c' in cif:
-		GULP_inputs([cif, UFF, 'unopt_gulp_inputs', False])
+GULP_inputs(['unopt_cifs/4c_Cu_1.cif', UFF, 'unopt_gulp_inputs', False])
 
 
 

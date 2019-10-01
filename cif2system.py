@@ -4,6 +4,8 @@ import re
 import numpy as np
 import networkx as nx
 import glob
+import itertools
+import datetime
 
 PT = ['H' , 'He', 'Li', 'Be', 'B' , 'C' , 'N' , 'O' , 'F' , 'Ne', 'Na', 'Mg', 'Al', 'Si', 'P' , 'S' , 'Cl', 'Ar',
 	  'K' , 'Ca', 'Sc', 'Ti', 'V' , 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr',
@@ -51,7 +53,7 @@ def PBC3DF_sym(vec1, vec2):
 		applies periodic boundary to distance between vec1 and vec2 (fractional coordinates)
 	"""
 	dist = vec1 - vec2
-	sym_dist = [(1.0, dim - 1.0) if dim > 0.5 else (-1.0, dim + 1.0) if dim < -0.5 else (0, dim) for dim in dist]
+	sym_dist = [(-1.0, dim - 1.0) if dim > 0.5 else (1.0, dim + 1.0) if dim < -0.5 else (0, dim) for dim in dist]
 	sym = np.array([s[0] for s in sym_dist])
 	ndist = np.array([s[1] for s in sym_dist])
 
@@ -84,16 +86,27 @@ def cif_read(filename, charges=False):
 		if '_cell_angle_gamma' in line:
 			gamma = s[1]
 		if iscoord(s):
+			
 			names.append(s[0])
 			elems.append(s[1])
+			
 			fvec = np.array([np.round(float(v),8) for v in s[2:5]])
+
+			#for dim in range(len(fvec)):
+			#	if fvec[dim] < 0.0:
+			#		fvec[dim] += 1.0
+			#	elif fvec[dim] > 1.0:
+			#		fvec[dim] -= 1.0
+
 			fcoords.append(fvec)
+
 			if charges:
 				charge_list.append(float(s[-1]))
 			else:
 				charge_list.append(0.0)
+
 		if isbond(s):
-			bonds.append((s[0],s[1],s[3],s[4]))
+			bonds.append((s[0],s[1],s[3],s[4],s[2]))
 
 	pi = np.pi
 	a,b,c,alpha,beta,gamma = map(float,(a,b,c,alpha,beta,gamma))
@@ -122,11 +135,11 @@ def cif_read(filename, charges=False):
 	ccoords = np.asarray(ccoords)
 	charges = np.asarray(charges)
 
-	return elems, names, ccoords, fcoords, charge_list, bonds, (a,b,c,alpha,beta,gamma)
+	return elems, names, ccoords, fcoords, charge_list, bonds, (a,b,c,alpha,beta,gamma), unit_cell
 
 def initialize_system(filename, charges=False):
 
-	elems, names, ccoords, fcoords, charge_list, bonds, uc_params = cif_read(filename, charges=charges)
+	elems, names, ccoords, fcoords, charge_list, bonds, uc_params, unit_cell = cif_read(filename, charges=charges)
 	A,B,C,alpha,beta,gamma = uc_params
 
 	G = nx.Graph()
@@ -134,11 +147,232 @@ def initialize_system(filename, charges=False):
 	index_key = {}
 	for e, n, cc, fc, charge in zip(elems, names, ccoords, fcoords, charge_list):
 		index += 1
-		G.add_node(index, element_symbol=e, index=index, force_field_type='', cartesian_position=cc, fractional_position=fc, charge=charge)
+		G.add_node(index, element_symbol=e, index=index, force_field_type='', cartesian_position=cc, fractional_position=fc, charge=charge, replication=np.array([0.0,0.0,0.0]), duplicated_version_of=None)
 		index_key[n] = index
 
 	for b in bonds:
-		G.add_edge(index_key[b[0]], index_key[b[1]], sym_code=b[2], bond_type=b[3])
+		
+		dist,sym = PBC3DF_sym(G.node[index_key[b[0]]]['fractional_position'], G.node[index_key[b[1]]]['fractional_position'])
+		
+		if np.any(sym):
+			sym_code = '1_' + ''.join(map(str, map(int, sym + 5)))
+		else:
+			sym_code = '.'
+
+		dist = np.linalg.norm(np.dot(unit_cell, dist))
+
+		G.add_edge(index_key[b[0]], index_key[b[1]], sym_code=sym_code, bond_type=b[3], length=float(b[-1]))
 
 	return {'box':(A,B,C,alpha,beta,gamma), 'graph':G}
+
+def duplicate_system(system, replications):
+
+	if replications == '1x1x1':
+		return system
+
+	G = system['graph']
+	box = system['box']
+
+	replications = map(int, replications.split('x'))
+	replicated_box = (box[0]*replications[0], box[1]*replications[1], box[2]*replications[2], box[3], box[4], box[5])
+
+	pi = np.pi
+	a,b,c,alpha,beta,gamma = replicated_box
+	ax = a
+	ay = 0.0
+	az = 0.0
+	bx = b * np.cos(gamma * pi / 180.0)
+	by = b * np.sin(gamma * pi / 180.0)
+	bz = 0.0
+	cx = c * np.cos(beta * pi / 180.0)
+	cy = (c * b * np.cos(alpha * pi /180.0) - bx * cx) / by
+	cz = (c ** 2.0 - cx ** 2.0 - cy ** 2.0) ** 0.5
+	unit_cell = np.asarray([[ax,ay,az],[bx,by,bz],[cx,cy,cz]]).T
+	inv_uc = np.linalg.inv(unit_cell)
+
+	basis_vecs = []
+	for dim in range(len(replications)):
+		for r in range(replications[dim]):
+			vec = np.zeros(3)
+			vec[dim] += r
+			if np.any(vec):
+				basis_vecs.append(vec)
+	basis_vecs.append(np.zeros(3))
+
+	replication_dims = len([r for r in replications if r > 1])
+
+	trans_vecs = []
+	for dim in range(replication_dims):
+		for c in itertools.combinations(basis_vecs, dim + 1):
+			vec = list(np.sum(np.array(c), axis=0))
+			if np.any(vec) and vec not in trans_vecs and max(vec) < max(replications):
+				trans_vecs.append(vec)
+	trans_vecs = [np.array(v) for v in trans_vecs]
+
+	NG = G.copy()
+	edge_remove_list = []
+	max_ind = max([d['index'] for n,d in G.nodes(data=True)])
+	count = max_ind
+	equivalency = dict((n,[]) for n in G.node())
+
+	for trans_vec in trans_vecs:
+		
+		for node, node_data in G.node(data=True):
+
+			count += 1
+			
+			# this data stays the same
+			element_symbol = node_data['element_symbol']
+			force_field_type = node_data['force_field_type']
+			charge = node_data['charge']
+			
+			# update index
+			original_atom = node_data['index']
+			new_index = count
+			
+			# update coordinates
+			fvec = node_data['fractional_position']
+			translated_fvec = fvec + trans_vec
+			fvec = np.array([c/d for c,d in zip(fvec, replications)])
+			translated_fvec = np.array([c/d for c,d in zip(translated_fvec, replications)])
+			NG.node[node]['fractional_position'] = fvec
+			cvec = np.dot(unit_cell, translated_fvec)
+			
+			equivalency[original_atom].append(new_index)
+			NG.add_node(new_index, element_symbol=element_symbol, index=new_index, force_field_type='', cartesian_position=cvec, fractional_position=translated_fvec, charge=charge, duplicated_version_of=original_atom)
+
+	for n0, n1, edge_data in G.edges(data=True):
+		
+		sym_code = edge_data['sym_code']
+		bond_type = edge_data['bond_type']
+		length = edge_data['length']
+		
+		fvec_n0 = NG.node[n0]['fractional_position']
+		fvec_n1 = NG.node[n1]['fractional_position']
+
+		for eq0 in equivalency[n0]:
+			for eq1 in equivalency[n1]:
+
+				fvec_eq0 = NG.node[eq0]['fractional_position']
+				fvec_eq1 = NG.node[eq1]['fractional_position']
+				
+				dist_e0e1,sym_e0e1 = PBC3DF_sym(fvec_eq0, fvec_eq1)
+				dist_e0e1 = np.linalg.norm(np.dot(unit_cell, dist_e0e1))
+				
+				dist_n0e1,sym_n0e1 = PBC3DF_sym(fvec_n0, fvec_eq1)
+				dist_n0e1 = np.linalg.norm(np.dot(unit_cell, dist_n0e1))
+
+				dist_e0n1,sym_e0n1 = PBC3DF_sym(fvec_eq0, fvec_n1)
+				dist_e0n1 = np.linalg.norm(np.dot(unit_cell, dist_e0n1))
+				
+				dist_n0n1,sym_n0n1 = PBC3DF_sym(fvec_n0, fvec_n1)
+				dist_n0n1 = np.linalg.norm(np.dot(unit_cell, dist_n0n1))
+				
+				if abs(dist_e0e1 - length) < 0.05:
+					
+					if np.any(sym_e0e1):
+						sym_code = '1_' + ''.join(map(str, map(int, sym_e0e1 + 5)))
+					else:
+						sym_code = '.'
+						
+					NG.add_edge(eq0, eq1, sym_code=sym_code, bond_type=bond_type, length=dist_e0e1)
+					
+				if abs(dist_n0e1 - length) < 0.05:
+					
+					if np.any(sym_n0e1):
+						sym_code = '1_' + ''.join(map(str, map(int, sym_n0e1 + 5)))
+					else:
+						sym_code = '.'
+					
+					NG.add_edge(n0, eq1, sym_code=sym_code, bond_type=bond_type, length=dist_n0e1)
+
+				if abs(dist_e0n1 - length) < 0.05:
+					
+					if np.any(sym_e0n1):
+						sym_code = '1_' + ''.join(map(str, map(int, sym_e0n1 + 5)))
+					else:
+						sym_code = '.'
+
+					NG.add_edge(eq0, n1, sym_code=sym_code, bond_type=bond_type, length=dist_n0e1)
+					
+				if abs(dist_n0n1 - length) > 0.05:
+					if (n0,n1) not in edge_remove_list:
+						edge_remove_list.append((n0, n1))
+
+	for e in edge_remove_list:
+		NG.remove_edge(e[0], e[1])
+
+	return {'box':replicated_box, 'graph':NG}
+
+def write_cif_from_system(system, filename):
+
+	box = system['box']
+	G = system['graph']
+	a,b,c,alpha,beta,gamma = box
+
+	with open(filename, 'w') as out:
+		out.write('data_' + filename[0:-4] + '\n')
+		out.write('_audit_creation_date              ' + datetime.datetime.today().strftime('%Y-%m-%d') + '\n')
+		out.write("_audit_creation_method            'cif2lammps'" + '\n')
+		out.write("_symmetry_space_group_name_H-M    'P1'" + '\n')
+		out.write('_symmetry_Int_Tables_number       1' + '\n')
+		out.write('_symmetry_cell_setting            triclinic' + '\n')
+		out.write('loop_' + '\n')
+		out.write('_symmetry_equiv_pos_as_xyz' + '\n')
+		out.write('  x,y,z' + '\n')
+		out.write('_cell_length_a                    ' + str(a) + '\n')
+		out.write('_cell_length_b                    ' + str(b) + '\n')
+		out.write('_cell_length_c                    ' + str(c) + '\n')
+		out.write('_cell_angle_alpha                 ' + str(alpha) + '\n')
+		out.write('_cell_angle_beta                  ' + str(beta) + '\n')
+		out.write('_cell_angle_gamma                 ' + str(gamma) + '\n')
+		out.write('loop_' + '\n')
+		out.write('_atom_site_label' + '\n')
+		out.write('_atom_site_type_symbol' + '\n')
+		out.write('_atom_site_fract_x' + '\n')
+		out.write('_atom_site_fract_y' + '\n')
+		out.write('_atom_site_fract_z' + '\n')
+		out.write('_atom_site_charge' + '\n')
+
+		index_dict = {}
+		for n,data in G.nodes(data=True):
+			vec = data['fractional_position']
+			es = data['element_symbol']
+			ind = es + str(data['index'])
+			index_dict[n] = ind
+			chg = data['charge']
+			out.write('{:7} {:>4} {:>15} {:>15} {:>15} {:>15}'.format(ind, es, vec[0], vec[1], vec[2], chg))
+			out.write('\n')
+
+		out.write('loop_' + '\n')
+		out.write('_geom_bond_atom_site_label_1' + '\n')
+		out.write('_geom_bond_atom_site_label_2' + '\n')
+		out.write('_geom_bond_distance' + '\n')
+		out.write('_geom_bond_site_symmetry_1' + '\n')
+		out.write('_ccdc_geom_bond_type' + '\n')
+
+		for n0, n1, data in G.edges(data=True):
+
+			ind0 = index_dict[n0]
+			ind1 = index_dict[n1]
+			dist = np.round(data['length'], 3)
+			sym = data['sym_code']
+			bond_type = data['bond_type']
+
+			out.write('{:7} {:>7} {:>7} {:>5} {:>3}'.format(ind0, ind1, dist, sym, bond_type))
+			out.write('\n')
+
+#for rep in ['2x1x1', '1x2x1', '1x1x2', '2x2x1', '2x2x2', '3x2x1', '3x3x3']:
+#for rep in ['2x2x2']:
+#
+#	system = initialize_system('acsb_v1-6c_Cr_1_Ch_v2-6c_bicyclooctane_Ch_1B_4H_Ch.cif')
+#	duplicated_system = duplicate_system(system, rep)
+#	write_cif_from_system(duplicated_system, rep + '_acsb_v1-6c_Cr_1_Ch_v2-6c_bicyclooctane_Ch_1B_4H_Ch.cif')
+
+
+
+
+
+
+
 

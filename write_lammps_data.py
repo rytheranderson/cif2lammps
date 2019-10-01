@@ -1,11 +1,13 @@
 from __future__ import print_function
-from cif2system import initialize_system
+from cif2system import initialize_system, duplicate_system
 import atomic_data
 import sys
 import os
 import numpy as np
 import math
 import datetime
+import math
+import itertools
 
 from force_field_construction import UFF
 # add more force field classes here as they are made
@@ -24,9 +26,53 @@ mass_key = atomic_data.mass_key
 
 def lammps_inputs(args):
 
-	cifname, force_field, outdir, charges = args
+	cifname, force_field, outdir, charges, replication = args
 
 	system = initialize_system(cifname, charges=charges)
+	
+	if 'min_atoms' in replication:
+		
+		min_atoms = int(replication.split(':')[-1])
+		box = system['box']
+
+		pi = np.pi
+		a,b,c,alpha,beta,gamma = box
+		ax = a
+		ay = 0.0
+		az = 0.0
+		bx = b * np.cos(gamma * pi / 180.0)
+		by = b * np.sin(gamma * pi / 180.0)
+		bz = 0.0
+		cx = c * np.cos(beta * pi / 180.0)
+		cy = (c * b * np.cos(alpha * pi /180.0) - bx * cx) / by
+		cz = (c ** 2.0 - cx ** 2.0 - cy ** 2.0) ** 0.5
+		unit_cell = np.asarray([[ax,ay,az],[bx,by,bz],[cx,cy,cz]]).T
+		inv_uc = np.linalg.inv(unit_cell)
+
+		G = system['graph']
+		Natoms = float(len(G.nodes()))
+		
+		duplications = int(math.ceil(min_atoms/Natoms))
+		rvals = range(duplications + 1)[1:]
+		shapes = itertools.product(rvals, rvals, rvals)
+		shapes = [s for s in shapes if reduce((lambda x, y: x * y), s) == duplications]
+		shape_deviations = [(i, np.std([shapes[i][0]*a, shapes[i][1]*b, shapes[i][2]*c])) for i in range(len(shapes))]
+		shape_deviations.sort(key = lambda x:x[1])
+		selected_shape = shapes[shape_deviations[0][0]]
+		
+		replication = 'x'.join(map(str, selected_shape))
+		system = duplicate_system(system, replication)
+		replication='ma' + str(min_atoms)
+
+	elif 'min_length' in replication:
+		
+		min_length = float(replication.split(':')[-1])
+		replication=''
+
+	elif 'x' in replication and replication != '1x1x1':
+		
+		system = duplicate_system(system, replication)
+
 	FF = force_field(system)
 	FF.compile_force_field(charges=charges)
 
@@ -47,7 +93,7 @@ def lammps_inputs(args):
 	yz = np.round((b * c*np.cos(math.radians(alpha)) - xy*xz)/ly, 8)
 	lz = np.round(np.sqrt(c**2 - xz**2 - yz**2), 8)
 
-	suffix = cifname.split('/')[-1].split('.')[0]
+	suffix = cifname.split('/')[-1].split('.')[0] + '_' + replication
 	data_name = 'data.' + suffix
 
 	with open(outdir + os.sep + data_name, 'w') as data:
@@ -292,6 +338,8 @@ def lammps_inputs(args):
 		infile.write('angle_style     ' + FF.angle_data['style'] + '\n')
 		infile.write('dihedral_style  ' + FF.dihedral_data['style'] + '\n')
 		infile.write('improper_style  ' + FF.improper_data['style'] + '\n')
+		if charges:
+			infile.write('kspace_style    ewald 0.000001\n')
 		infile.write('\n')
 		sb = FF.pair_data['special_bonds']
 		infile.write('dielectric      1.0\n')
