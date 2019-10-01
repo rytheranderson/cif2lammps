@@ -34,7 +34,7 @@ def serial_conversion(directory, force_field=UFF, outdir='unopt_lammps_data', ch
 
 	print('--- cifs in', directory, 'converted and placed in', outdir, '---')
 
-def parallel_conversion(directory, force_field=UFF, outdir='unopt_lammps_data', charges=False, parallel=True):
+def parallel_conversion(directory, force_field=UFF, outdir='unopt_lammps_data', charges=False, parallel=True, replication='1x1x1'):
 
 	try:
 		os.mkdir(outdir)
@@ -44,7 +44,7 @@ def parallel_conversion(directory, force_field=UFF, outdir='unopt_lammps_data', 
 	print('conversion running on ' + str(multiprocessing.cpu_count()) + ' cores')
 
 	cifs = sorted(glob.glob(directory + os.sep + '*.cif'))
-	args = [[cif, force_field, outdir, charges] for cif in cifs]
+	args = [[cif, force_field, outdir, charges, replication] for cif in cifs]
 	pool = Pool(multiprocessing.cpu_count())
 	results_par = pool.map_async(lammps_inputs, args) 
 	pool.close()

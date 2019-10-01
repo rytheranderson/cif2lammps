@@ -61,6 +61,7 @@ def lammps_inputs(args):
 		selected_shape = shapes[shape_deviations[0][0]]
 		
 		replication = 'x'.join(map(str, selected_shape))
+		print('replicating to a', replication, 'cell ...')
 		system = duplicate_system(system, replication)
 		replication='ma' + str(min_atoms)
 
@@ -72,6 +73,10 @@ def lammps_inputs(args):
 	elif 'x' in replication and replication != '1x1x1':
 		
 		system = duplicate_system(system, replication)
+
+	else:
+
+		raise ValueError('The replication command is not recognized')
 
 	FF = force_field(system)
 	FF.compile_force_field(charges=charges)

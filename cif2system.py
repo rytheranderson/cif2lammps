@@ -91,13 +91,6 @@ def cif_read(filename, charges=False):
 			elems.append(s[1])
 			
 			fvec = np.array([np.round(float(v),8) for v in s[2:5]])
-
-			#for dim in range(len(fvec)):
-			#	if fvec[dim] < 0.0:
-			#		fvec[dim] += 1.0
-			#	elif fvec[dim] > 1.0:
-			#		fvec[dim] -= 1.0
-
 			fcoords.append(fvec)
 
 			if charges:
@@ -190,24 +183,25 @@ def duplicate_system(system, replications):
 	unit_cell = np.asarray([[ax,ay,az],[bx,by,bz],[cx,cy,cz]]).T
 	inv_uc = np.linalg.inv(unit_cell)
 
-	basis_vecs = []
-	for dim in range(len(replications)):
-		for r in range(replications[dim]):
-			vec = np.zeros(3)
-			vec[dim] += r
-			if np.any(vec):
-				basis_vecs.append(vec)
-	basis_vecs.append(np.zeros(3))
+	basis_vecs = [np.array([1,0,0]), np.array([0,1,0]), np.array([0,0,1])]
+	dim0 =  [[np.array([0,0,0])]] + [[np.array([0,0,0])] + [basis_vecs[0] for i in range(r + 1)] for r in range(replications[0] - 1)]
+	dim1 =  [[np.array([0,0,0])]] + [[np.array([0,0,0])] + [basis_vecs[1] for i in range(r + 1)] for r in range(replications[1] - 1)]
+	dim2 =  [[np.array([0,0,0])]] + [[np.array([0,0,0])] + [basis_vecs[2] for i in range(r + 1)] for r in range(replications[2] - 1)]
 
-	replication_dims = len([r for r in replications if r > 1])
+	dim0 = [np.sum([v for v in comb], axis=0) for comb in dim0]
+	dim1 = [np.sum([v for v in comb], axis=0) for comb in dim1]
+	dim2 = [np.sum([v for v in comb], axis=0) for comb in dim2]
 
-	trans_vecs = []
-	for dim in range(replication_dims):
-		for c in itertools.combinations(basis_vecs, dim + 1):
-			vec = list(np.sum(np.array(c), axis=0))
-			if np.any(vec) and vec not in trans_vecs and max(vec) < max(replications):
-				trans_vecs.append(vec)
-	trans_vecs = [np.array(v) for v in trans_vecs]
+	trans_vecs = [np.sum(comb, axis=0) for comb in itertools.product(dim0, dim1, dim2)]
+	trans_vecs = [v for v in trans_vecs if np.any(v)]
+
+	print('The transformation vectors for the replication are:')
+	for vec in trans_vecs:
+		print(vec)
+	print('...')
+
+	if len(trans_vecs) != replications[0] * replications[1] * replications[2] - 1:
+		raise ValueError('The number of transformation vectors in the replication is wrong somehow')
 
 	NG = G.copy()
 	edge_remove_list = []

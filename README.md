@@ -31,8 +31,10 @@ This will change to output location to the specified path.
 --charges=[True|False]
 ```
 Charges will be considered if set to True, this means the pair_style and such will be updated to include electrostatic interactions. The default is False. Only set to True if the the region _atom_site_charge is in your cif file(s).
-
-
+```
+--replication=[QxRxS | min_atoms:N ]
+```
+The CIF cell will be replicated to the shape QxRxS or to have atleast N atoms, in the latter case the most cubic possible shape is used.
 ## Requirements
 Just download Anaconda. This should work for Py2 or Py3.
 
