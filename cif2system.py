@@ -91,6 +91,12 @@ def cif_read(filename, charges=False):
 			elems.append(s[1])
 			
 			fvec = np.array([np.round(float(v),8) for v in s[2:5]])
+			for dim in range(len(fvec)):
+				if fvec[dim] < 0.0:
+					fvec[dim] += 1.0
+				elif fvec[dim] > 1.0:
+					fvec[dim] -= 1.0
+
 			fcoords.append(fvec)
 
 			if charges:
@@ -119,8 +125,8 @@ def cif_read(filename, charges=False):
 
 	for l in fcoords:
 		vec = l
-		dist,sym = PBC3DF_sym(norm_vec,vec)
-		vec = vec - sym
+		#dist,sym = PBC3DF_sym(norm_vec,vec)
+		#vec = vec - sym
 		vec = np.dot(unit_cell,vec)
 		ccoords.append(vec)
 
@@ -342,7 +348,7 @@ def write_cif_from_system(system, filename):
 		out.write('_geom_bond_atom_site_label_1' + '\n')
 		out.write('_geom_bond_atom_site_label_2' + '\n')
 		out.write('_geom_bond_distance' + '\n')
-		out.write('_geom_bond_site_symmetry_1' + '\n')
+		#out.write('_geom_bond_site_symmetry_1' + '\n')
 		out.write('_ccdc_geom_bond_type' + '\n')
 
 		for n0, n1, data in G.edges(data=True):
@@ -353,20 +359,6 @@ def write_cif_from_system(system, filename):
 			sym = data['sym_code']
 			bond_type = data['bond_type']
 
-			out.write('{:7} {:>7} {:>7} {:>5} {:>3}'.format(ind0, ind1, dist, sym, bond_type))
+			out.write('{:7} {:>7} {:>7} {:>3}'.format(ind0, ind1, dist, bond_type))
 			out.write('\n')
-
-#for rep in ['2x1x1', '1x2x1', '1x1x2', '2x2x1', '2x2x2', '3x2x1', '3x3x3']:
-#for rep in ['2x2x2']:
-#
-#	system = initialize_system('acsb_v1-6c_Cr_1_Ch_v2-6c_bicyclooctane_Ch_1B_4H_Ch.cif')
-#	duplicated_system = duplicate_system(system, rep)
-#	write_cif_from_system(duplicated_system, rep + '_acsb_v1-6c_Cr_1_Ch_v2-6c_bicyclooctane_Ch_1B_4H_Ch.cif')
-
-
-
-
-
-
-
 

@@ -1,5 +1,5 @@
 from __future__ import print_function
-from cif2system import initialize_system, duplicate_system
+from cif2system import initialize_system, duplicate_system, write_cif_from_system
 import atomic_data
 import sys
 import os
@@ -74,9 +74,15 @@ def lammps_inputs(args):
 		
 		system = duplicate_system(system, replication)
 
+	elif replication == '1x1x1':
+
+		pass
+
 	else:
 
 		raise ValueError('The replication command is not recognized')
+
+	#write_cif_from_system(system, replication + cifname.split('/')[-1])
 
 	FF = force_field(system)
 	FF.compile_force_field(charges=charges)
@@ -273,7 +279,7 @@ def lammps_inputs(args):
 
 		for a in SG.nodes(data=True):
 			atom_data = a[1]
-			index = atom_data['index']
+			index = a[0]
 			force_field_type = atom_data['force_field_type']
 			lammps_type = FF.atom_types[force_field_type]
 			if charges:
@@ -353,4 +359,14 @@ def lammps_inputs(args):
 		infile.write('box             tilt large\n')
 		infile.write('read_data       ' + data_name + '\n')
 		infile.write('\n')
+
+	#with open(outdir + os.sep + suffix + '.xyz', 'w') as check:
+	#	check.write(str(len(SG.nodes())) + '\n')
+	#	check.write('check xyz\n')
+	#	for node, data in SG.nodes(data=True):
+	#		es = data['element_symbol']
+	#		coords = data['cartesian_position']
+	#		line = [es, coords[0], coords[1], coords[2]]
+	#		check.write('{} {} {} {}'.format(*line))
+	#		check.write('\n')
 
