@@ -9,12 +9,13 @@ import sys
 import time
 from write_lammps_data import lammps_inputs
 
-from force_field_construction import UFF
+from UFF4MOF_construction import UFF4MOF
+from UFF_construction import UFF
 # add more force field classes here as they are made
 
-force_fields = ['UFF']
+force_fields = ['UFF4MOF']
 
-def serial_conversion(directory, force_field=UFF, outdir='unopt_lammps_data', charges=False, parallel=False, replication='1x1x1'):
+def serial_conversion(directory, force_field=UFF4MOF, outdir='unopt_lammps_data', charges=False, parallel=False, replication='1x1x1'):
 
 	try:
 		os.mkdir(outdir)
@@ -26,15 +27,11 @@ def serial_conversion(directory, force_field=UFF, outdir='unopt_lammps_data', ch
 	cifs = sorted(glob.glob(directory + os.sep + '*.cif'))
 	for cif in cifs:
 		print('converting ', cif, '...')
-		#try:
 		lammps_inputs([cif, force_field, outdir, charges, replication])
-		#except:
-		#	print('ERROR during converion of', cif)
-		#	continue
 
 	print('--- cifs in', directory, 'converted and placed in', outdir, '---')
 
-def parallel_conversion(directory, force_field=UFF, outdir='unopt_lammps_data', charges=False, parallel=True, replication='1x1x1'):
+def parallel_conversion(directory, force_field=UFF4MOF, outdir='unopt_lammps_data', charges=False, parallel=True, replication='1x1x1'):
 
 	try:
 		os.mkdir(outdir)
@@ -84,7 +81,9 @@ def run_conversion():
 	except KeyError:
 		serial_conversion(directory, **optional_arguments)
 
-start_time = time.time()
-if __name__ == '__main__': 
-	run_conversion()
-print("conversion took %s seconds " % np.round((time.time() - start_time), 3))
+serial_conversion('unopt_cifs', replication='cutoff')
+
+#start_time = time.time()
+#if __name__ == '__main__': 
+#	run_conversion()
+#print("conversion took %s seconds " % np.round((time.time() - start_time), 3))

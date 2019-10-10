@@ -1,16 +1,27 @@
 from __future__ import print_function
-from cif2system import initialize_system, duplicate_system, write_cif_from_system
+from cif2system import initialize_system, duplicate_system, replication_determination, write_cif_from_system
 import atomic_data
 import sys
 import os
 import numpy as np
-import math
 import datetime
 import math
 import itertools
 
-from force_field_construction import UFF
+from UFF4MOF_construction import UFF4MOF
+import UFF4MOF_constants
+
+from UFF_construction import UFF
+import UFF_constants
 # add more force field classes here as they are made
+
+UFF4MOF_atom_parameters = UFF4MOF_constants.UFF4MOF_atom_parameters
+UFF4MOF_bond_orders_0 = UFF4MOF_constants.UFF4MOF_bond_orders_0
+
+#UFF_atom_parameters = UFF_constants.UFF_atom_parameters
+#UFF_bond_orders_0 = UFF_constants.UFF_bond_orders_0
+
+mass_key = atomic_data.mass_key
 
 def isfloat(value):
 	"""
@@ -22,69 +33,23 @@ def isfloat(value):
 	except ValueError:
 		return False
 
-mass_key = atomic_data.mass_key
-
 def lammps_inputs(args):
 
 	cifname, force_field, outdir, charges, replication = args
 
+	# add more forcefields here as they are created
+	if force_field == UFF4MOF:
+		FF_args = {'FF_parameters':UFF4MOF_atom_parameters, 'bond_orders':UFF4MOF_bond_orders_0}
+		cutoff = 12.50
+		mixing_rules='shift yes mix geometric'
+	elif force_field == UFF:
+		FF_args = {'FF_parameters':UFF_atom_parameters, 'bond_orders':UFF_bond_orders_0}
+		cutoff = 12.50
+		mixing_rules='shift yes mix geometric'
+
 	system = initialize_system(cifname, charges=charges)
-	
-	if 'min_atoms' in replication:
-		
-		min_atoms = int(replication.split(':')[-1])
-		box = system['box']
-
-		pi = np.pi
-		a,b,c,alpha,beta,gamma = box
-		ax = a
-		ay = 0.0
-		az = 0.0
-		bx = b * np.cos(gamma * pi / 180.0)
-		by = b * np.sin(gamma * pi / 180.0)
-		bz = 0.0
-		cx = c * np.cos(beta * pi / 180.0)
-		cy = (c * b * np.cos(alpha * pi /180.0) - bx * cx) / by
-		cz = (c ** 2.0 - cx ** 2.0 - cy ** 2.0) ** 0.5
-		unit_cell = np.asarray([[ax,ay,az],[bx,by,bz],[cx,cy,cz]]).T
-		inv_uc = np.linalg.inv(unit_cell)
-
-		G = system['graph']
-		Natoms = float(len(G.nodes()))
-		
-		duplications = int(math.ceil(min_atoms/Natoms))
-		rvals = range(duplications + 1)[1:]
-		shapes = itertools.product(rvals, rvals, rvals)
-		shapes = [s for s in shapes if reduce((lambda x, y: x * y), s) == duplications]
-		shape_deviations = [(i, np.std([shapes[i][0]*a, shapes[i][1]*b, shapes[i][2]*c])) for i in range(len(shapes))]
-		shape_deviations.sort(key = lambda x:x[1])
-		selected_shape = shapes[shape_deviations[0][0]]
-		
-		replication = 'x'.join(map(str, selected_shape))
-		print('replicating to a', replication, 'cell ...')
-		system = duplicate_system(system, replication)
-		replication='ma' + str(min_atoms)
-
-	elif 'min_length' in replication:
-		
-		min_length = float(replication.split(':')[-1])
-		replication=''
-
-	elif 'x' in replication and replication != '1x1x1':
-		
-		system = duplicate_system(system, replication)
-
-	elif replication == '1x1x1':
-
-		pass
-
-	else:
-
-		raise ValueError('The replication command is not recognized')
-
-	#write_cif_from_system(system, replication + cifname.split('/')[-1])
-
-	FF = force_field(system)
+	system, replication = replication_determination(system, replication, cutoff)
+	FF = force_field(system, cutoff, FF_args)
 	FF.compile_force_field(charges=charges)
 
 	first_line = "Created by Ryther's extremely high quality code on " + str(datetime.datetime.now())
@@ -344,7 +309,7 @@ def lammps_inputs(args):
 		infile.write('atom_style      full\n')
 		infile.write('boundary        p p p\n')
 		infile.write('\n')
-		infile.write('pair_style      ' + FF.pair_data['style'] + ' 12.5\n')
+		infile.write('pair_style      ' + FF.pair_data['style'] + ' ' + str(FF.cutoff) + '\n')
 		infile.write('bond_style      ' + FF.bond_data['style'] + '\n')
 		infile.write('angle_style     ' + FF.angle_data['style'] + '\n')
 		infile.write('dihedral_style  ' + FF.dihedral_data['style'] + '\n')
@@ -354,19 +319,9 @@ def lammps_inputs(args):
 		infile.write('\n')
 		sb = FF.pair_data['special_bonds']
 		infile.write('dielectric      1.0\n')
-		infile.write('pair_modify     shift yes mix geometric\n')
+		infile.write('pair_modify     ' + mixing_rules + '\n')
 		infile.write('special_bonds   ' + sb + '\n')
 		infile.write('box             tilt large\n')
 		infile.write('read_data       ' + data_name + '\n')
 		infile.write('\n')
-
-	#with open(outdir + os.sep + suffix + '.xyz', 'w') as check:
-	#	check.write(str(len(SG.nodes())) + '\n')
-	#	check.write('check xyz\n')
-	#	for node, data in SG.nodes(data=True):
-	#		es = data['element_symbol']
-	#		coords = data['cartesian_position']
-	#		line = [es, coords[0], coords[1], coords[2]]
-	#		check.write('{} {} {} {}'.format(*line))
-	#		check.write('\n')
 

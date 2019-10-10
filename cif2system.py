@@ -1,6 +1,7 @@
 from __future__ import print_function
 import sys
 import re
+import math
 import numpy as np
 import networkx as nx
 import glob
@@ -303,6 +304,154 @@ def duplicate_system(system, replications):
 		NG.remove_edge(e[0], e[1])
 
 	return {'box':replicated_box, 'graph':NG}
+
+def replication_determination(system, replication, cutoff):
+
+	box = system['box']
+
+	pi = np.pi
+	a,b,c,alpha,beta,gamma = box
+	ax = a
+	ay = 0.0
+	az = 0.0
+	bx = b * np.cos(gamma * pi / 180.0)
+	by = b * np.sin(gamma * pi / 180.0)
+	bz = 0.0
+	cx = c * np.cos(beta * pi / 180.0)
+	cy = (c * b * np.cos(alpha * pi /180.0) - bx * cx) / by
+	cz = (c ** 2.0 - cx ** 2.0 - cy ** 2.0) ** 0.5
+	unit_cell = np.asarray([[ax,ay,az],[bx,by,bz],[cx,cy,cz]]).T
+	inv_uc = np.linalg.inv(unit_cell)
+
+	avec = np.array([ax, ay, az])
+	bvec = np.array([bx, by, bz])
+	cvec = np.array([cx, cy, cz])
+	
+	thetac = np.arccos(np.dot(np.cross(avec, bvec), cvec) / (np.linalg.norm(np.cross(avec, bvec)) * np.linalg.norm(cvec)))
+	dist2 = np.absolute(np.linalg.norm(cvec) * np.cos(thetac))
+	
+	thetab = np.arccos(np.dot(np.cross(avec, cvec), bvec) / (np.linalg.norm(np.cross(avec, cvec)) * np.linalg.norm(bvec)))
+	dist1 = np.absolute(np.linalg.norm(bvec) * np.cos(thetab))
+	
+	thetaa = np.arccos(np.dot(np.cross(cvec, bvec), avec) / (np.linalg.norm(np.cross(cvec, bvec)) * np.linalg.norm(avec)))
+	dist0 = np.absolute(np.linalg.norm(avec) * np.cos(thetaa))
+
+	if 'min_atoms' in replication:
+		
+		min_atoms = int(replication.split(':')[-1])
+
+		G = system['graph']
+		Natoms = float(len(G.nodes()))
+		dmin = int(math.ceil(min_atoms/Natoms))
+
+		dsep0 = int(math.ceil((2*cutoff)/dist0))
+		dsep1 = int(math.ceil((2*cutoff)/dist1))
+		dsep2 = int(math.ceil((2*cutoff)/dist2))
+		dsep = dsep0 * dsep1 * dsep2
+		
+		duplications = max(dsep, dmin)
+		useable_shapes = []
+
+		print('minimum duplications allowed:', duplications)
+
+		while len(useable_shapes) < 1:
+
+			rvals = range(duplications + 1)[1:]
+			shapes = itertools.product(rvals, rvals, rvals)
+			shapes = [s for s in shapes if reduce((lambda x, y: x * y), s) == duplications]
+			useable_shapes = [s for s in shapes if min(dist0*s[0], dist1*s[1], dist2*s[2]) >= 2*cutoff]
+			useable_shapes = [s for s in useable_shapes if max([((a*s[0])/(b*s[1])), ((a*s[0])/(c*s[2])), ((b*s[1])/(c*s[2])), ((b*s[1])/(a*s[0])), ((c*s[2])/(a*s[0])), ((c*s[2])/(b*s[1]))]) <= 2.0]
+			duplications += 1
+
+		duplications -= 1
+		print('final duplications:', duplications)
+		print('final number of atoms:', int(duplications*Natoms))
+			
+		shape_deviations = [(i, np.std([useable_shapes[i][0]*a, useable_shapes[i][1]*b, useable_shapes[i][2]*c])) for i in range(len(useable_shapes))]
+		shape_deviations.sort(key = lambda x:x[1])
+		selected_shape = useable_shapes[shape_deviations[0][0]]
+		
+		replication = 'x'.join(map(str, selected_shape))
+		print('replicating to a', replication, 'cell (' + str(duplications) + ' duplications)...')
+		system = duplicate_system(system, replication)
+		print('the minimum boundary-boundary distance is', min([d*s for d,s in zip(selected_shape, (dist0,dist1,dist2))]))
+		replication='ma' + str(min_atoms)
+
+		a,b,c,alpha,beta,gamma = system['box']		
+		lx = np.round(a, 8)
+		xy = np.round(b * np.cos(math.radians(gamma)), 8)
+		xz = np.round(c * np.cos(math.radians(beta)), 8)
+		ly = np.round(np.sqrt(b**2 - xy**2), 8)
+		yz = np.round((b * c*np.cos(math.radians(alpha)) - xy*xz)/ly, 8)
+		lz = np.round(np.sqrt(c**2 - xz**2 - yz**2), 8)
+
+		print('lx =', np.round(lx, 3), '(dim 0 separation = ' + str(np.round(selected_shape[0] * dist0, 3)) + ')')
+		print('ly =', np.round(ly, 3), '(dim 1 separation = ' + str(np.round(selected_shape[1] * dist1, 3)) + ')')
+		print('lz =', np.round(lz, 3), '(dim 2 separation = ' + str(np.round(selected_shape[2] * dist2, 3)) + ')')
+		print('alpha =', np.round(alpha, 3))
+		print('beta  =', np.round(beta, 3))
+		print('gamma =', np.round(gamma, 3))
+
+	elif 'cutoff' in replication:
+
+		dsep0 = int(math.ceil((2*cutoff)/dist0))
+		dsep1 = int(math.ceil((2*cutoff)/dist1))
+		dsep2 = int(math.ceil((2*cutoff)/dist2))
+		dsep = dsep0 * dsep1 * dsep2
+		
+		duplications = dsep
+		useable_shapes = []
+
+		print('minimum duplications allowed:', duplications)
+
+		while len(useable_shapes) < 1:
+
+			rvals = range(duplications + 1)[1:]
+			shapes = itertools.product(rvals, rvals, rvals)
+			shapes = [s for s in shapes if reduce((lambda x, y: x * y), s) == duplications]
+			useable_shapes = [s for s in shapes if min(dist0*s[0], dist1*s[1], dist2*s[2]) >= 2*cutoff]
+			duplications += 1
+
+		duplications -= 1
+		print('final duplications:', duplications)
+			
+		shape_deviations = [(i, np.std([useable_shapes[i][0]*a, useable_shapes[i][1]*b, useable_shapes[i][2]*c])) for i in range(len(useable_shapes))]
+		shape_deviations.sort(key = lambda x:x[1])
+		selected_shape = useable_shapes[shape_deviations[0][0]]
+		
+		replication = 'x'.join(map(str, selected_shape))
+		print('replicating to a', replication, 'cell (' + str(duplications) + ' duplications)...')
+		system = duplicate_system(system, replication)
+		print('the minimum boundary-boundary distance is', min([d*s for d,s in zip(selected_shape, (dist0,dist1,dist2))]))
+
+		a,b,c,alpha,beta,gamma = system['box']		
+		lx = np.round(a, 8)
+		xy = np.round(b * np.cos(math.radians(gamma)), 8)
+		xz = np.round(c * np.cos(math.radians(beta)), 8)
+		ly = np.round(np.sqrt(b**2 - xy**2), 8)
+		yz = np.round((b * c*np.cos(math.radians(alpha)) - xy*xz)/ly, 8)
+		lz = np.round(np.sqrt(c**2 - xz**2 - yz**2), 8)
+
+		print('lx =', np.round(lx, 3), '(dim 0 separation = ' + str(np.round(selected_shape[0] * dist0, 3)) + ')')
+		print('ly =', np.round(ly, 3), '(dim 1 separation = ' + str(np.round(selected_shape[1] * dist1, 3)) + ')')
+		print('lz =', np.round(lz, 3), '(dim 2 separation = ' + str(np.round(selected_shape[2] * dist2, 3)) + ')')
+		print('alpha =', np.round(alpha, 3))
+		print('beta  =', np.round(beta, 3))
+		print('gamma =', np.round(gamma, 3))
+	
+	elif 'x' in replication and replication != '1x1x1':
+		
+		system = duplicate_system(system, replication)
+
+	elif replication == '1x1x1':
+
+		pass
+
+	else:
+
+		raise ValueError('The replication command is not recognized')
+
+	return system, replication
 
 def write_cif_from_system(system, filename):
 
