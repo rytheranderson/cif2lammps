@@ -47,6 +47,7 @@ Dreiding_atom_parameters = {
 
 Dreiding_bond_orders_0 = {
 	("Cu", "Cu")    : 0.25,
+	("Cu", "O_2_M") : 0.50,
 	("Zn", "O_2_M") : 0.50,
 	("Zr", "O_2_M") : 0.50,
 	("Cr", "O_2_M") : 0.50,

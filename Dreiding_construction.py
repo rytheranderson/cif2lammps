@@ -135,17 +135,25 @@ class Dreiding(force_field):
 		fft_i,fft_j,fft_k = angle
 		R1_j, theta_j, R0_j, D0_j, phi_j, S_j = Dreiding_atom_parameters[fft_j]
 
-		K = 100.0/2.0
+		K = 100.0
 
-		if theta_j != 90.0:
+		if theta_j not in (90.0, 180.0):
 			theta0 = theta_j
 			angle_style = 'cosine/squared'
-		else:
+		elif theta_j == 180.0:
+			K *= 0.5
+			angle_style = 'cosine'
+			return (angle_style, K)
+		elif theta_j == 90.0:
+			K *= 0.5
 			theta0 = theta_j
 			angle_style = 'cosine/periodic'
 			n = 4
 			b = 1
 			return (angle_style, K, b, n)
+
+		sinT0 = np.sin(math.radians(theta_j))
+		K = (0.5 * K)/(sinT0*sinT0)
 
 		return (angle_style, K, theta0)
 
