@@ -11,6 +11,7 @@ from write_lammps_data import lammps_inputs
 
 from UFF4MOF_construction import UFF4MOF
 from UFF_construction import UFF
+from Dreiding_construction import Dreiding
 # add more force field classes here as they are made
 
 force_fields = ['UFF4MOF']
@@ -81,7 +82,7 @@ def run_conversion():
 	except KeyError:
 		serial_conversion(directory, **optional_arguments)
 
-serial_conversion('unopt_cifs', replication='cutoff')
+serial_conversion('unopt_cifs', replication='cutoff', force_field=Dreiding)
 
 #start_time = time.time()
 #if __name__ == '__main__': 

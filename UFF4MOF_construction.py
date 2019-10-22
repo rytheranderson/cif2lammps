@@ -31,7 +31,7 @@ class UFF4MOF(force_field):
 			bond_types = [SG.get_edge_data(name, n)['bond_type'] for n in nbors]
 			mass = mass_key[element_symbol]
 
-			# Atom typing for UFF, this can be made much more robust with pattern matching,
+			# Atom typing for UFF4MOF, this can be made much more robust with pattern matching,
 			# but this works for most ToBaCCo MOFs, use at your own risk.
 			ty = None
 			if 'A' in bond_types and element_symbol != 'O':
@@ -55,12 +55,16 @@ class UFF4MOF(force_field):
 					# oxygen case is complex with the UFF4MOF oxygen types
 					if element_symbol == 'O':
 						# -OH, for example
-						if len(nbors) == 2 and 'A' not in bond_types and not any(i in metals for i in nbor_symbols):
+						if len(nbors) == 2 and 'A' not in bond_types and 'D' not in bond_types and not any(i in metals for i in nbor_symbols):
 							ty = 'O_3'
 							hyb = 'sp3'
 						# furan oxygen, for example
 						elif len(nbors) == 2 and 'A' in bond_types and not any(i in metals for i in nbor_symbols):
 							ty = 'O_R'
+							hyb = 'sp2'
+						# carboxyllic oxygen
+						elif len(nbors) == 2 and 'D' in bond_types and not any(i in metals for i in nbor_symbols):
+							ty = 'O_2'
 							hyb = 'sp2'
 						# carboxylate oxygen bound to metal node
 						elif len(nbors) == 2 and any(i in metals for i in nbor_symbols) and 'C' in nbor_symbols:
@@ -95,10 +99,6 @@ class UFF4MOF(force_field):
 						elif len([i for i in nbor_symbols if i in metals]) == 1 and 'H' in nbor_symbols:
 							ty = 'O_3_M'
 							hyp = 'sp3'
-						# aromatic organic oxygen
-						elif not any(i in metals for i in nbor_symbols) and 'A' in bond_types:
-							ty = 'O_R'
-							hyb = 'resonant'
 						# error if no type is identified
 						else:
 							raise ValueError('Oxygen with neighbors ' + ' '.join(nbor_symbols) + ' is not parametrized')
@@ -195,20 +195,20 @@ class UFF4MOF(force_field):
 		# linear
 		div = 1.0
 		if theta0_j == 180.0:
-			b = 1
 			n = 1
+			b = 1
 		# trigonal planar
 		elif theta0_j == 120.0:
-			b = 3
-			n = -1
+			n = 3
+			b = -1
 		# square planar or octahedral
 		elif theta0_j == 90.0:
-			b = 4
-			n = 1
+			n = 4
+			b = 1
 		# general non-linear
 		else:
-			b = 'NA'
 			n = 'NA'
+			b = 'NA'
 
 		cosT0 = np.cos(math.radians(theta0_j))
 		sinT0 = np.sin(math.radians(theta0_j))
@@ -230,7 +230,7 @@ class UFF4MOF(force_field):
 		# this is needed to correct the LAMMPS angle energy calculation
 		K *= 0.5
 
-		return (angle_style, K, n, b)
+		return (angle_style, K, b, n)
 
 	def dihedral_parameters(self, bond, hybridization, element_symbols, nodes):
 

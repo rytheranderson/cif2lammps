@@ -55,51 +55,32 @@ class UFF(force_field):
 					# oxygen case is complex with the UFF4MOF oxygen types
 					if element_symbol == 'O':
 						# -OH, for example
-						if len(nbors) == 2 and 'A' not in bond_types and not any(i in metals for i in nbor_symbols):
+						if len(nbors) == 2 and 'A' not in bond_types and 'D' not in bond_types and not any(i in metals for i in nbor_symbols):
 							ty = 'O_3'
 							hyb = 'sp3'
 						# furan oxygen, for example
 						elif len(nbors) == 2 and 'A' in bond_types and not any(i in metals for i in nbor_symbols):
 							ty = 'O_R'
 							hyb = 'sp2'
+						# carboxyllic oxygen
+						elif len(nbors) == 2 and 'D' in bond_types and not any(i in metals for i in nbor_symbols):
+							ty = 'O_2'
+							hyb = 'sp2'
 						# carboxylate oxygen bound to metal node
-						elif len(nbors) == 2 and any(i in metals for i in nbor_symbols) and 'C' in nbor_symbols:
+						elif len(nbors) == 2 and any(i in metals for i in nbor_symbols):
 							ty = 'O_2_M'
 							hyb = 'sp2'
-						# node oxygens bound only to metals (typically central)
-						elif all(i in metals for i in nbor_symbols):
-							# MIL-100 type nodes
-							if len(nbors) == 3 and 'Zr' not in nbor_symbols:
-								ty = 'O_2_z'
-								hyb = 'sp2'
-							# UIO type nodes, oxygen without bound hydrogen
-							elif len(nbors) == 3 and 'Zr' in nbor_symbols:
-								ty = 'O_3_f'
-								hyb = 'sp3'
-							# IRMOF-1 type nodes
-							elif len(nbors) == 4:
-								ty = 'O_3_f'
-								hyb = 'sp3'
-							# error if no type is identified
-							else:
-								raise ValueError('Oxygen with neighbors ' + ' '.join(nbor_symbols) + ' is not parametrized')
-						# oxygen in the UIO type nodes, with bound hydrogen
-						elif len([i for i in nbor_symbols if i in metals]) == 3 and 'Zr' in nbor_symbols:
-							ty = 'O_3_f'
-							hyb = 'sp3'
-						# MIL-47 type nodes
-						elif len([i for i in nbor_symbols if i in metals]) == 2 and 'H' in nbor_symbols:
-							ty = 'O_2_z'
+						# central 3-connected oxygen 
+						elif len(nbors) == 3 and all(i in metals for i in nbor_symbols) and 'Zr' not in nbor_symbols:
+							ty = 'O_2_M'
 							hyb = 'sp2'
-						# solvent oxygen bound to a single open metal site
-						elif len([i for i in nbor_symbols if i in metals]) == 1 and 'H' in nbor_symbols:
+						elif len(nbors) == 3 and all(i in metals for i in nbor_symbols) and 'Zr' in nbor_symbols:
 							ty = 'O_3_M'
-							hyp = 'sp3'
-						# aromatic organic oxygen
-						elif not any(i in metals for i in nbor_symbols) and 'A' in bond_types:
-							ty = 'O_R'
-							hyb = 'resonant'
-						# error if no type is identified
+							hyb = 'sp2'
+						# node oxygens bound to metals 
+						elif len(nbors) >= 3 and any(i in metals for i in nbor_symbols):
+							ty = 'O_3_M'
+							hyb = 'sp2'
 						else:
 							raise ValueError('Oxygen with neighbors ' + ' '.join(nbor_symbols) + ' is not parametrized')
 					# sulfur case is simple
@@ -112,26 +93,23 @@ class UFF(force_field):
 					hyb = 'sp1'
 				# Metals
 				elif element_symbol in metals:
-					# paddlewheel metals
-					if len(nbors) == 5 and element_symbol in ('Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Cu', 'Zn') and any(i in metals for i in nbor_symbols):
-						ty = element_symbol + '4+2'
+					# Cu paddlewheel, just changed equilibrium angle of Cu3+1 to 90.0 
+					if len(nbors) == 5 and element_symbol == 'Cu' and any(i in metals for i in nbor_symbols):
+						ty = element_symbol + '4+1'
 						hyb = 'NA'
 					# M3O(CO2H)6 metals, e.g. MIL-100
-					elif len(nbors) in (5,6) and element_symbol in ('Al', 'Sc', 'V', 'Mn', 'Fe') and not any(i in metals for i in nbor_symbols):
+					elif len(nbors) in (5,6) and element_symbol in ('Al', 'Sc', 'V', 'Mn', 'Fe', 'Cr') and not any(i in metals for i in nbor_symbols):
 						ty = element_symbol + '6+3'
 						if element_symbol == 'V':
 							ty = 'V_6+3'
 						hyb = 'NA'
-					elif len(nbors) in (5,6) and element_symbol == 'Cr' and not any(i in metals for i in nbor_symbols):
-						ty = 'Cr6f3'
-						hyb = 'NA'
 					# IRMOF-1 node
 					elif len(nbors) == 4 and element_symbol == 'Zn':
-						ty = 'Zn3f2'
+						ty = 'Zn3+2'
 						hyb = 'NA'
 					# Zr node
 					elif len(nbors) in (7,8) and element_symbol == 'Zr':
-						ty = 'Zr8f4'
+						ty = 'Zr3+4'
 						hyb = 'NA'
 				# if no type can be identified
 				else:
@@ -195,16 +173,16 @@ class UFF(force_field):
 		# linear
 		div = 1.0
 		if theta0_j == 180.0:
-			b = 1
 			n = 1
+			b = 1
 		# trigonal planar
 		elif theta0_j == 120.0:
-			b = 3
-			n = -1
+			n = 3
+			b = -1
 		# square planar or octahedral
 		elif theta0_j == 90.0:
-			b = 4
-			n = 1
+			n = 4
+			b = 1
 		# general non-linear
 		else:
 			b = 'NA'
@@ -230,7 +208,7 @@ class UFF(force_field):
 		# this is needed to correct the LAMMPS angle energy calculation
 		K *= 0.5
 
-		return (angle_style, K, n, b)
+		return (angle_style, K, b, n)
 
 	def dihedral_parameters(self, bond, hybridization, element_symbols, nodes):
 

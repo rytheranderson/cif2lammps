@@ -13,13 +13,20 @@ import UFF4MOF_constants
 
 from UFF_construction import UFF
 import UFF_constants
+
+from Dreiding_construction import Dreiding
+import Dreiding_constants
+
 # add more force field classes here as they are made
 
 UFF4MOF_atom_parameters = UFF4MOF_constants.UFF4MOF_atom_parameters
 UFF4MOF_bond_orders_0 = UFF4MOF_constants.UFF4MOF_bond_orders_0
 
-#UFF_atom_parameters = UFF_constants.UFF_atom_parameters
-#UFF_bond_orders_0 = UFF_constants.UFF_bond_orders_0
+UFF_atom_parameters = UFF_constants.UFF_atom_parameters
+UFF_bond_orders_0 = UFF_constants.UFF_bond_orders_0
+
+Dreiding_atom_parameters = Dreiding_constants.Dreiding_atom_parameters
+Dreiding_bond_orders_0 = Dreiding_constants.Dreiding_bond_orders_0
 
 mass_key = atomic_data.mass_key
 
@@ -44,6 +51,10 @@ def lammps_inputs(args):
 		mixing_rules='shift yes mix geometric'
 	elif force_field == UFF:
 		FF_args = {'FF_parameters':UFF_atom_parameters, 'bond_orders':UFF_bond_orders_0}
+		cutoff = 12.50
+		mixing_rules='shift yes mix geometric'
+	elif force_field == Dreiding:
+		FF_args = {'FF_parameters':Dreiding_atom_parameters, 'bond_orders':Dreiding_bond_orders_0}
 		cutoff = 12.50
 		mixing_rules='shift yes mix geometric'
 

@@ -7,6 +7,10 @@ import networkx as nx
 import glob
 import itertools
 import datetime
+import atomic_data
+
+metals = atomic_data.metals
+mass_key = atomic_data.mass_key
 
 PT = ['H' , 'He', 'Li', 'Be', 'B' , 'C' , 'N' , 'O' , 'F' , 'Ne', 'Na', 'Mg', 'Al', 'Si', 'P' , 'S' , 'Cl', 'Ar',
 	  'K' , 'Ca', 'Sc', 'Ti', 'V' , 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr',
@@ -126,8 +130,6 @@ def cif_read(filename, charges=False):
 
 	for l in fcoords:
 		vec = l
-		#dist,sym = PBC3DF_sym(norm_vec,vec)
-		#vec = vec - sym
 		vec = np.dot(unit_cell,vec)
 		ccoords.append(vec)
 
@@ -162,6 +164,24 @@ def initialize_system(filename, charges=False):
 		dist = np.linalg.norm(np.dot(unit_cell, dist))
 
 		G.add_edge(index_key[b[0]], index_key[b[1]], sym_code=sym_code, bond_type=b[3], length=float(b[-1]))
+
+	for e in G.edges(data=True):
+
+		e0,e1,data = e
+		nbors0 = list(G.neighbors(e0))
+		nbors1 = list(G.neighbors(e1))
+		nbors0_symbols = [G.node[nb]['element_symbol'] for nb in nbors0]
+		nbors1_symbols = [G.node[nb]['element_symbol'] for nb in nbors1]
+		es0 = G.node[e0]['element_symbol']
+		es1 = G.node[e1]['element_symbol']
+		bond_type = data['bond_type']
+
+		if es0 == 'O' and es1 == 'C' and any(i in metals for i in nbors0_symbols) and bond_type != 'A':
+			print('correcting carboxyllic bond type to aromatic for', filename)
+			data['bond_type'] = 'A'
+		if es1 == 'O' and es0 == 'C' and any(i in metals for i in nbors1_symbols) and bond_type != 'A':
+			print('correcting carboxyllic bond type to aromatic for', filename)
+			data['bond_type'] = 'A'
 
 	return {'box':(A,B,C,alpha,beta,gamma), 'graph':G}
 
