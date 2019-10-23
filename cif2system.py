@@ -355,9 +355,9 @@ def replication_determination(system, replication, cutoff):
 	
 	thetaa = np.arccos(np.dot(np.cross(cvec, bvec), avec) / (np.linalg.norm(np.cross(cvec, bvec)) * np.linalg.norm(avec)))
 	dist0 = np.absolute(np.linalg.norm(avec) * np.cos(thetaa))
-
+	
 	if 'min_atoms' in replication:
-		
+
 		min_atoms = int(replication.split(':')[-1])
 
 		G = system['graph']

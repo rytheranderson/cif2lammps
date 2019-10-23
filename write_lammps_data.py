@@ -42,18 +42,18 @@ def isfloat(value):
 
 def lammps_inputs(args):
 
-	cifname, force_field, outdir, charges, replication = args
-
+	cifname, force_field, ff_string, outdir, charges, replication = args
+	
 	# add more forcefields here as they are created
-	if force_field == UFF4MOF:
+	if ff_string == 'UFF4MOF':
 		FF_args = {'FF_parameters':UFF4MOF_atom_parameters, 'bond_orders':UFF4MOF_bond_orders_0}
 		cutoff = 12.50
 		mixing_rules='shift yes mix geometric'
-	elif force_field == UFF:
+	elif ff_string == 'UFF':
 		FF_args = {'FF_parameters':UFF_atom_parameters, 'bond_orders':UFF_bond_orders_0}
 		cutoff = 12.50
 		mixing_rules='shift yes mix geometric'
-	elif force_field == Dreiding:
+	elif ff_string == 'Dreiding':
 		FF_args = {'FF_parameters':Dreiding_atom_parameters, 'bond_orders':Dreiding_bond_orders_0}
 		cutoff = 12.50
 		mixing_rules='shift yes mix arithmetic'
