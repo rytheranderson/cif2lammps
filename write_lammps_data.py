@@ -56,7 +56,7 @@ def lammps_inputs(args):
 	elif force_field == Dreiding:
 		FF_args = {'FF_parameters':Dreiding_atom_parameters, 'bond_orders':Dreiding_bond_orders_0}
 		cutoff = 12.50
-		mixing_rules='shift yes mix geometric'
+		mixing_rules='shift yes mix arithmetic'
 
 	system = initialize_system(cifname, charges=charges)
 	system, replication = replication_determination(system, replication, cutoff)

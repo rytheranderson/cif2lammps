@@ -237,10 +237,10 @@ class Dreiding(force_field):
 		# divide by multiplicity and halve to match UFF paper
 		V /= mult
 		V *= 0.5
-		d = (-1.0*n*phi0) + 180.0
-		w = 1.0
+		d = (n*phi0) + 180.0
+		w = 0.0
 
-		return ('charmm', V, int(n), int(d))
+		return ('charmm', V, int(n), int(d), w)
 
 	def improper_parameters(self, fft_i):
 		
@@ -260,16 +260,15 @@ class Dreiding(force_field):
 		atom_types = self.atom_types
 		params = {}
 		comments = {}
+		sb = 'dreiding'
 
 		# determine style and special bonds
 		if charges:
 			style = 'lj/cut/coul/long'
 			cutoff = 12.5
-			sb = 'lj/coul 0.0 0.0 1.0'
 		else:
 			style = 'lj/cut'
 			cutoff = 12.5
-			sb = 'lj 0.0 0.0 1.0'
 
 		for a in atom_types:
 			ID = atom_types[a]
@@ -461,7 +460,7 @@ class Dreiding(force_field):
 			dihedral_comments[ID] = list(dihedral) + ['bond order=' + str(d[2])]
 			count += len(dihedrals[d])
 
-		self.dihedral_data = {'all_dihedrals':all_dihedrals, 'params':indexed_dihedral_params, 'style':'harmonic', 'count':(count, len(all_dihedrals)), 'comments':dihedral_comments}
+		self.dihedral_data = {'all_dihedrals':all_dihedrals, 'params':indexed_dihedral_params, 'style':'charmm', 'count':(count, len(all_dihedrals)), 'comments':dihedral_comments}
 
 	def enumerate_impropers(self):
 		
@@ -505,7 +504,7 @@ class Dreiding(force_field):
 				all_impropers[ID] = impropers[i]
 				count += len(impropers[i])
 				
-		self.improper_data = {'all_impropers':all_impropers, 'params':improper_params, 'style':'fourier', 'count':(count, len(all_impropers)), 'comments':improper_comments}
+		self.improper_data = {'all_impropers':all_impropers, 'params':improper_params, 'style':'umbrella', 'count':(count, len(all_impropers)), 'comments':improper_comments}
 
 	def compile_force_field(self, charges):
 		
