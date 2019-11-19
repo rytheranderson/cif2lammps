@@ -4,7 +4,7 @@
 - Ryther Anderson
 
 ## Motivation
-cif2lammps is a Python 3 program used to convert crystals (developed initially for metal-organic frameworks) to Large-scale Atomic Molecular Massively Parallel Simulator (LAMMPS) format. 
+cif2lammps is a Python 2 or 3 program used to convert crystals (developed initially for metal-organic frameworks) to Large-scale Atomic Molecular Massively Parallel Simulator (LAMMPS) format. 
 
 ## Current Status
 cif2lammps can be used to convert ToBaCCo (https://github.com/tobacco-mofs/tobacco_3.0) generated cifs LAMMPS data and input according to the UFF/UFF4MOF. More force-fields and the option to use custom force-fields will be added. Keep in mind this is the very first version of the code, and I (Ryther) wrote is quite quickly, so expect to need adapt it yourself to use in the current state. 
@@ -36,5 +36,5 @@ Charges will be considered if set to True, this means the pair_style and such wi
 ```
 The CIF cell will be replicated to the shape QxRxS or to have atleast N atoms, in the latter case the most cubic possible shape is used.
 ## Requirements
-Just download Anaconda. This should work for Py2 or Py3.
+Just download Anaconda. This should work for Python 2 or Python 3.
 
