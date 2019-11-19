@@ -8,6 +8,7 @@ import glob
 import itertools
 import datetime
 import atomic_data
+import functools
 
 metals = atomic_data.metals
 mass_key = atomic_data.mass_key
@@ -48,7 +49,7 @@ def isbond(line):
 	"""
 		identifies bonding in cifs
 	"""
-	if nn(line[0]) in PT and nn(line[1]) in PT and isfloat(line[2]) and True not in map(isfloat,line[3:]):
+	if nn(line[0]) in PT and nn(line[1]) in PT and isfloat(line[2]) and line[-1] in ('S', 'D', 'T', 'A'):
 		return True
 	else:
 		return False
@@ -193,7 +194,7 @@ def duplicate_system(system, replications):
 	G = system['graph']
 	box = system['box']
 
-	replications = map(int, replications.split('x'))
+	replications = list(map(int, replications.split('x')))
 	replicated_box = (box[0]*replications[0], box[1]*replications[1], box[2]*replications[2], box[3], box[4], box[5])
 
 	pi = np.pi
@@ -378,7 +379,7 @@ def replication_determination(system, replication, cutoff):
 
 			rvals = range(duplications + 1)[1:]
 			shapes = itertools.product(rvals, rvals, rvals)
-			shapes = [s for s in shapes if reduce((lambda x, y: x * y), s) == duplications]
+			shapes = [s for s in shapes if functools.reduce((lambda x, y: x * y), s) == duplications]
 			useable_shapes = [s for s in shapes if min(dist0*s[0], dist1*s[1], dist2*s[2]) >= 2*cutoff]
 			useable_shapes = [s for s in useable_shapes if max([((a*s[0])/(b*s[1])), ((a*s[0])/(c*s[2])), ((b*s[1])/(c*s[2])), ((b*s[1])/(a*s[0])), ((c*s[2])/(a*s[0])), ((c*s[2])/(b*s[1]))]) <= 2.0]
 			duplications += 1
@@ -428,7 +429,7 @@ def replication_determination(system, replication, cutoff):
 
 			rvals = range(duplications + 1)[1:]
 			shapes = itertools.product(rvals, rvals, rvals)
-			shapes = [s for s in shapes if reduce((lambda x, y: x * y), s) == duplications]
+			shapes = [s for s in shapes if functools.reduce((lambda x, y: x * y), s) == duplications]
 			useable_shapes = [s for s in shapes if min(dist0*s[0], dist1*s[1], dist2*s[2]) >= 2*cutoff]
 			duplications += 1
 

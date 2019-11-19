@@ -303,7 +303,7 @@ class Dreiding(force_field):
 				except KeyError:
 					bond_order = bond_order_dict[bond_type]
 
-			bond = tuple(sorted([fft_i, fft_j, bond_order]))
+			bond = tuple(sorted([fft_i, fft_j]) + [bond_order])
 
 			# add to list if bond type already exists, else add a new type
 			try:
@@ -322,8 +322,8 @@ class Dreiding(force_field):
 		for b in bonds:
 
 			ID += 1
-			bond_order = b[0]
-			bond = (b[1], b[2])
+			bond_order = float(b[2])
+			bond = (b[0], b[1])
 			params = self.bond_parameters(bond, bond_order)
 			bond_params[ID] = list(params)
 			bond_comments[ID] = list(bond) + ['bond order=' + str(bond_order)]

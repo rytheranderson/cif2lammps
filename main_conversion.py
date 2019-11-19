@@ -8,6 +8,7 @@ import re
 import sys
 import time
 from write_lammps_data import lammps_inputs
+from write_GULP_inputs import GULP_inputs
 
 from UFF4MOF_construction import UFF4MOF
 from UFF_construction import UFF
@@ -50,6 +51,24 @@ def parallel_conversion(directory, force_field=UFF4MOF, ff_string='UFF4MOF', out
 
 	print('--- cifs in', directory, 'converted and placed in', outdir, '---')
 
+def parallel_GULP_conversion(directory, force_field=UFF4MOF, outdir='GULP_inputs', charges=False, parallel=True, replication='1x1x1', GULP=True, noautobond=True):
+
+	try:
+		os.mkdir(outdir)
+	except OSError:
+		pass
+
+	print('conversion running on ' + str(multiprocessing.cpu_count()) + ' cores')
+
+	cifs = sorted(glob.glob(directory + os.sep + '*.cif'))
+	args = [[cif, force_field, outdir, charges, replication, noautobond] for cif in cifs]
+	pool = Pool(multiprocessing.cpu_count())
+	results_par = pool.map_async(GULP_inputs, args) 
+	pool.close()
+	pool.join()
+
+	print('--- cifs in', directory, 'converted and placed in', outdir, '---')
+
 def run_conversion():
 
 	arguments = sys.argv[1:]
@@ -81,13 +100,21 @@ def run_conversion():
 			optional_arguments[parse_arg[0]] = value
 
 	try:
-		if optional_arguments['parallel']:
-			parallel_conversion(directory, **optional_arguments)
-		else:
-			serial_conversion(directory, **optional_arguments)
-			
+		
+		if optional_arguments['GULP']:
+			print('converting to GULP format...')
+			parallel_GULP_conversion(directory, **optional_arguments)
+
 	except KeyError:
-		serial_conversion(directory, **optional_arguments)
+
+		try:
+			if optional_arguments['parallel']:
+				parallel_conversion(directory, **optional_arguments)
+			else:
+				serial_conversion(directory, **optional_arguments)
+				
+		except KeyError:
+			serial_conversion(directory, **optional_arguments)
 
 start_time = time.time()
 if __name__ == '__main__': 

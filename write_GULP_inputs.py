@@ -1,5 +1,5 @@
 from __future__ import print_function
-from cif2system import initialize_system
+from cif2system import initialize_system, duplicate_system, replication_determination, write_cif_from_system
 import atomic_data
 import sys
 import os
@@ -7,7 +7,27 @@ import numpy as np
 import math
 import datetime
 
-from force_field_construction import UFF
+from UFF4MOF_construction import UFF4MOF
+import UFF4MOF_constants
+
+from UFF_construction import UFF
+import UFF_constants
+
+from Dreiding_construction import Dreiding
+import Dreiding_constants
+
+
+UFF4MOF_atom_parameters = UFF4MOF_constants.UFF4MOF_atom_parameters
+UFF4MOF_bond_orders_0 = UFF4MOF_constants.UFF4MOF_bond_orders_0
+
+UFF_atom_parameters = UFF_constants.UFF_atom_parameters
+UFF_bond_orders_0 = UFF_constants.UFF_bond_orders_0
+
+Dreiding_atom_parameters = Dreiding_constants.Dreiding_atom_parameters
+Dreiding_bond_orders_0 = Dreiding_constants.Dreiding_bond_orders_0
+
+mass_key = atomic_data.mass_key
+
 # add more force field classes here as they are made
 
 # this is a placeholder script for conversion to GULP, currently it is just used
@@ -30,10 +50,13 @@ def GULP_inputs(args):
 
 	gulp_bond_types = {0.25:'quarter', 0.5:'half', 1.0:'', 1.5:'resonant', 2.0:'', 3.0:''}
 
-	cifname, force_field, outdir, charges = args
+	cifname, force_field, outdir, charges, replication, noautobond = args
+	FF_args = {'FF_parameters':UFF4MOF_atom_parameters, 'bond_orders':UFF4MOF_bond_orders_0}
+	cutoff = 12.5
 
 	system = initialize_system(cifname, charges=charges)
-	FF = force_field(system)
+	system, replication = replication_determination(system, replication, cutoff)
+	FF = force_field(system, cutoff, FF_args)
 	FF.compile_force_field(charges=charges)
 
 	SG = FF.system['graph']
@@ -50,7 +73,10 @@ def GULP_inputs(args):
 
 	with open(outdir + os.sep + name, 'w') as gin:
 		
-		gin.write('opti conp noautobond fix molmec orthorhombic cartesian\n')
+		if noautobond:
+			gin.write('opti conp free zsisa noautobond cartesian\n')
+		else:
+			gin.write('opti conp free zsisa cartesian\n')
 		gin.write('vectors\n')
 		gin.write(str(lx) + ' 0.0 0.0' '\n')
 		gin.write('0.0 ' + str(ly) + ' 0.0'+ '\n')
@@ -72,15 +98,18 @@ def GULP_inputs(args):
 		bonds = [(b,ty) for ty in FF.bond_data['all_bonds'] for b in FF.bond_data['all_bonds'][ty]]
 		bonds.sort(key = lambda x:x[0][0])
 
-		for bond in bonds:
-			b, ty = bond
-			comments = FF.bond_data['comments'][ty]
-			bond_order = float(comments[-1].split('=')[-1])
-			gulp_bond = gulp_bond_types[bond_order]
-			line = ['connect', b[0], b[1], gulp_bond]
-			gin.write('{:10} {:5} {:5} {:>10}'.format(*line))
+		if noautobond:
+			for bond in bonds:
+				b, ty = bond
+				comments = FF.bond_data['comments'][ty]
+				bond_order = float(comments[-1].split('=')[-1])
+				gulp_bond = gulp_bond_types[bond_order]
+				line = ['connect', b[0], b[1], gulp_bond]
+				gin.write('{:10} {:5} {:5} {:>10}'.format(*line))
+				gin.write('\n')
 			gin.write('\n')
-		gin.write('\n')
+		else:
+			pass
 
 		gin.write('species\n')
 		for fft in FF.atom_types:
@@ -101,10 +130,9 @@ def GULP_inputs(args):
 
 		gin.write('library uff4mof.lib\n')
 		gin.write('uff_bondorder custom 0.001\n')
-		gin.write('maxcyc 10000\n')
 		gin.write('output cif ' + 'OPT_' + preffix + '.cif' + '\n')
+		gin.write('rspeed 0.1000\n')
+		gin.write('temperature 300\n')
 
-GULP_inputs(['unopt_cifs/4c_Cu_1.cif', UFF, 'unopt_gulp_inputs', False])
-
-
+#GULP_inputs(['unopt_cifs/pcu_v1-6c_Zn_1_Ch_1B_2thiophene_Ch.cif', UFF4MOF, 'GULP_inputs', False, '1x1x1'])
 

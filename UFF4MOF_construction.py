@@ -26,7 +26,7 @@ class UFF4MOF(force_field):
 		for atom in SG.nodes(data=True):
 			name, inf = atom
 			element_symbol = inf['element_symbol']
-			nbors = list(SG.neighbors(name))
+			nbors = [a for a in SG.neighbors(name)]
 			nbor_symbols = [SG.nodes[n]['element_symbol'] for n in nbors]
 			bond_types = [SG.get_edge_data(name, n)['bond_type'] for n in nbors]
 			mass = mass_key[element_symbol]
@@ -136,7 +136,7 @@ class UFF4MOF(force_field):
 				# if no type can be identified
 				else:
 					raise ValueError('No UFF4MOF type identified for ' + element_symbol + 'with neighbors ' + ' '.join(nbor_symbols))
-					
+			
 			types.append((ty, element_symbol, mass))
 			SG.node[name]['force_field_type'] += ty
 			SG.node[name]['hybridization'] = hyb
@@ -384,7 +384,7 @@ class UFF4MOF(force_field):
 				except KeyError:
 					bond_order = bond_order_dict[bond_type]
 
-			bond = tuple(sorted([fft_i, fft_j, bond_order]))
+			bond = tuple(sorted([fft_i, fft_j]) + [bond_order])
 
 			# add to list if bond type already exists, else add a new type
 			try:
@@ -403,9 +403,9 @@ class UFF4MOF(force_field):
 		for b in bonds:
 
 			ID += 1
-			bond_order = b[0]
-			bond = (b[1], b[2])
-			params = self.bond_parameters(bond, bond_order)
+			bond_order = b[2]
+			bond = (b[0], b[1])
+			params = self.bond_parameters(bond, float(bond_order))
 			bond_params[ID] = list(params)
 			bond_comments[ID] = list(bond) + ['bond order=' + str(bond_order)]
 			all_bonds[ID] = bonds[b]
