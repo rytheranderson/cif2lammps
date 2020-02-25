@@ -1,21 +1,17 @@
 from __future__ import print_function
-from cif2system import initialize_system, duplicate_system, replication_determination, write_cif_from_system
+from cif2system import initialize_system, replication_determination
+from small_molecule_construction import add_small_molecules
 import atomic_data
-import sys
 import os
 import numpy as np
 import datetime
 import math
-import itertools
+import warnings
 
-from UFF4MOF_construction import UFF4MOF
 import UFF4MOF_constants
-
-from UFF_construction import UFF
 import UFF_constants
-
-from Dreiding_construction import Dreiding
 import Dreiding_constants
+import zeolite_constants
 
 # add more force field classes here as they are made
 
@@ -27,6 +23,8 @@ UFF_bond_orders_0 = UFF_constants.UFF_bond_orders_0
 
 Dreiding_atom_parameters = Dreiding_constants.Dreiding_atom_parameters
 Dreiding_bond_orders_0 = Dreiding_constants.Dreiding_bond_orders_0
+
+Nicholas_atom_parameters = zeolite_constants.Nicholas_atom_parameters
 
 mass_key = atomic_data.mass_key
 
@@ -42,8 +40,8 @@ def isfloat(value):
 
 def lammps_inputs(args):
 
-	cifname, force_field, ff_string, outdir, charges, replication = args
-	
+	cifname, force_field, ff_string, sm_ff_string, outdir, charges, replication = args
+
 	# add more forcefields here as they are created
 	if ff_string == 'UFF4MOF':
 		FF_args = {'FF_parameters':UFF4MOF_atom_parameters, 'bond_orders':UFF4MOF_bond_orders_0}
@@ -57,11 +55,21 @@ def lammps_inputs(args):
 		FF_args = {'FF_parameters':Dreiding_atom_parameters, 'bond_orders':Dreiding_bond_orders_0}
 		cutoff = 12.50
 		mixing_rules='shift yes mix arithmetic'
+	elif ff_string == 'Nicholas':
+		FF_args = {'FF_parameters':Nicholas_atom_parameters, 'bond_orders':'NA'}
+		cutoff = 12.50
+		mixing_rules='shift yes mix arithmetic'
 
 	system = initialize_system(cifname, charges=charges)
 	system, replication = replication_determination(system, replication, cutoff)
 	FF = force_field(system, cutoff, FF_args)
 	FF.compile_force_field(charges=charges)
+
+	if sm_ff_string != None:
+		add_small_molecules(FF, sm_ff_string)
+	else:
+		if len(FF.system['SM_graph'].nodes()) != 0:
+			warnings.warn('extra-framework molecules detected, but no small molecule force field is specified!')
 
 	first_line = "Created by Ryther's extremely high quality code on " + str(datetime.datetime.now())
 
@@ -70,7 +78,11 @@ def lammps_inputs(args):
 	N_bonds, ty_bonds = FF.bond_data['count']
 	N_angles, ty_angles = FF.angle_data['count']
 	N_dihedrals, ty_dihedrals = FF.dihedral_data['count']
-	N_impropers, ty_impropers = FF.improper_data['count']
+	try:
+		N_impropers, ty_impropers = FF.improper_data['count']
+	except AttributeError:
+		N_impropers = 0
+		ty_impropers = None
 
 	a,b,c,alpha,beta,gamma = system['box']
 	lx = np.round(a, 8)
@@ -152,14 +164,24 @@ def lammps_inputs(args):
 				data.write('    {:<3}'.format(bty))
 				# style needs to be written for hybrid
 				data.write('{:<20}'.format(params[0]))
-				format_string = ' '.join(['{:{w}.{p}f}' if not np.issubdtype(x, np.integer) else '{:{w}}' for x in params[1:]])
+
+				try:
+					format_string = ' '.join(['{:{w}.{p}f}' if not np.issubdtype(x, np.integer) else '{:{w}}' for x in params[1:]])
+				except TypeError:
+					format_string = ' '.join(['{:{w}}' for x in params[1:]])
+				
 				data.write(format_string.format(*params[1:], w=12, p=5))
 				data.write(' '.join([' #'] + comment))
 				data.write('\n')
 			else:
 				# type
 				data.write('    {:<3}'.format(bty))
-				format_string = ' '.join(['{:{w}.{p}f}' if not np.issubdtype(x, np.integer) else '{:{w}}' for x in params[1:]])
+
+				try:
+					format_string = ' '.join(['{:{w}.{p}f}' if not np.issubdtype(x, np.integer) else '{:{w}}' for x in params[1:]])
+				except TypeError:
+					format_string = ' '.join(['{:{w}}' for x in params[1:]])
+
 				data.write(format_string.format(*params[1:], w=12, p=5))
 				data.write(' '.join([' #'] + comment))
 				data.write('\n')
@@ -179,14 +201,24 @@ def lammps_inputs(args):
 				data.write('    {:<3}'.format(aty))
 				# style needs to be written for hybrid
 				data.write('{:<20}'.format(params[0]))
-				format_string = ' '.join(['{:{w}.{p}f}' if not np.issubdtype(x, np.integer) else '{:{w}}' for x in params[1:]])
+				
+				try:
+					format_string = ' '.join(['{:{w}.{p}f}' if not np.issubdtype(x, np.integer) else '{:{w}}' for x in params[1:]])
+				except TypeError:
+					format_string = ' '.join(['{:{w}}' for x in params[1:]])
+
 				data.write(format_string.format(*params[1:], w=12, p=5))
 				data.write(' '.join([' #'] + comment))
 				data.write('\n')
 			else:
 				# type
 				data.write('    {:<3}'.format(aty))
-				format_string = ' '.join(['{:{w}.{p}f}' if not np.issubdtype(x, np.integer) else '{:{w}}' for x in params[1:]])
+
+				try:
+					format_string = ' '.join(['{:{w}.{p}f}' if not np.issubdtype(x, np.integer) else '{:{w}}' for x in params[1:]])
+				except TypeError:
+					format_string = ' '.join(['{:{w}}' for x in params[1:]])
+
 				data.write(format_string.format(*params[1:], w=12, p=5))
 				data.write(' '.join([' #'] + comment))
 				data.write('\n')
@@ -264,7 +296,7 @@ def lammps_inputs(args):
 				charge = 0.0
 			pos = [np.round(v,8) for v in atom_data['cartesian_position']]
 
-			data.write('{:>5} {:<5} {:<5} {:8.5f} {:12.5f} {:12.5f} {:12.5f}'.format(index, '444', lammps_type, charge, pos[0], pos[1], pos[2]))
+			data.write('{:>5} {:<5} {:<5} {:8.5f} {:12.5f} {:12.5f} {:12.5f}'.format(index, atom_data['mol_flag'], lammps_type, charge, pos[0], pos[1], pos[2]))
 			data.write('\n')
 
 		data.write('\n')
@@ -324,7 +356,10 @@ def lammps_inputs(args):
 		infile.write('bond_style      ' + FF.bond_data['style'] + '\n')
 		infile.write('angle_style     ' + FF.angle_data['style'] + '\n')
 		infile.write('dihedral_style  ' + FF.dihedral_data['style'] + '\n')
-		infile.write('improper_style  ' + FF.improper_data['style'] + '\n')
+		try:
+			infile.write('improper_style  ' + FF.improper_data['style'] + '\n')
+		except AttributeError:
+			pass
 		if charges:
 			infile.write('kspace_style    ewald 0.000001\n')
 		infile.write('\n')

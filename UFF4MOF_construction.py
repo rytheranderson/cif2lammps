@@ -1,7 +1,5 @@
 from __future__ import print_function
-from abc import abstractmethod
 import numpy as np
-import networkx as nx
 import math
 import itertools
 import atomic_data
@@ -24,6 +22,7 @@ class UFF4MOF(force_field):
 		types = []
 
 		for atom in SG.nodes(data=True):
+			
 			name, inf = atom
 			element_symbol = inf['element_symbol']
 			nbors = [a for a in SG.neighbors(name)]
@@ -44,8 +43,12 @@ class UFF4MOF(force_field):
 					hyb = 'sp1'
 				# Group 6
 				elif element_symbol in ('C', 'Si'):
-					ty = element_symbol + '_' + str(len(nbors) - 1)
-					hyb = 'sp' + str(len(nbors) - 1)
+					if len(element_symbol) == 1:
+						ty = element_symbol + '_' + str(len(nbors) - 1)
+						hyb = 'sp' + str(len(nbors) - 1)
+					else:
+						ty = element_symbol + str(len(nbors) - 1)
+						hyb = 'sp' + str(len(nbors) - 1)
 				# Group 7
 				elif element_symbol in ('N'):
 					ty = element_symbol + '_' + str(len(nbors))
@@ -98,7 +101,7 @@ class UFF4MOF(force_field):
 						# solvent oxygen bound to a single open metal site
 						elif len([i for i in nbor_symbols if i in metals]) == 1 and 'H' in nbor_symbols:
 							ty = 'O_3_M'
-							hyp = 'sp3'
+							hyb = 'sp3'
 						# error if no type is identified
 						else:
 							raise ValueError('Oxygen with neighbors ' + ' '.join(nbor_symbols) + ' is not parametrized')
@@ -113,7 +116,11 @@ class UFF4MOF(force_field):
 				# Metals
 				elif element_symbol in metals:
 					# paddlewheel metals
-					if len(nbors) == 5 and element_symbol in ('Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Cu', 'Zn') and any(i in metals for i in nbor_symbols):
+					if len(nbors) == 5 and element_symbol in ('Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Cu', 'Zn', 'Ni') and any(i in metals for i in nbor_symbols):
+						ty = element_symbol + '4+2'
+						hyb = 'NA'
+					# S-M-S/O-M-O node
+					elif len(nbors) == 4 and element_symbol in ('Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Cu', 'Zn', 'Ni') and not any(i in metals for i in nbor_symbols):
 						ty = element_symbol + '4+2'
 						hyb = 'NA'
 					# M3O(CO2H)6 metals, e.g. MIL-100
@@ -136,7 +143,7 @@ class UFF4MOF(force_field):
 				# if no type can be identified
 				else:
 					raise ValueError('No UFF4MOF type identified for ' + element_symbol + 'with neighbors ' + ' '.join(nbor_symbols))
-			
+				
 			types.append((ty, element_symbol, mass))
 			SG.node[name]['force_field_type'] += ty
 			SG.node[name]['hybridization'] = hyb
@@ -154,7 +161,6 @@ class UFF4MOF(force_field):
 
 	def bond_parameters(self, bond, bond_order):
 		
-		SG = self.system['graph']
 		UFF4MOF_atom_parameters = self.args['FF_parameters']
 
 		i,j = bond
@@ -178,7 +184,6 @@ class UFF4MOF(force_field):
 
 	def angle_parameters(self, angle, r_ij, r_jk):
 		
-		SG = self.system['graph']
 		UFF4MOF_atom_parameters = self.args['FF_parameters']
 
 		i,j,k = angle
@@ -193,7 +198,6 @@ class UFF4MOF(force_field):
 		r0_k, theta0_k, x1_k, D1_k, zeta_k, Z1_k, V_k, X_k = params_k
 
 		# linear
-		div = 1.0
 		if theta0_j == 180.0:
 			n = 1
 			b = 1
@@ -248,9 +252,6 @@ class UFF4MOF(force_field):
 		mult = con_j * con_k
 		if mult == 0.0:
 			return 'NA'
-
-		nbors_j = [UFF4MOF_atom_parameters[SG.node[n]['force_field_type']][7] for n in SG.neighbors(node_j) if n != node_k]
-		nbors_k = [UFF4MOF_atom_parameters[SG.node[n]['force_field_type']][7] for n in SG.neighbors(node_k) if n != node_j]
 
 		# cases taken from the DREIDING paper (same cases, different force constants for UFF)
 		# they are not done in order to save some lines, I don't know of a better way for doing
@@ -344,11 +345,9 @@ class UFF4MOF(force_field):
 		# determine style and special bonds
 		if charges:
 			style = 'lj/cut/coul/long'
-			cutoff = 12.5
 			sb = 'lj/coul 0.0 0.0 1.0'
 		else:
 			style = 'lj/cut'
-			cutoff = 12.5
 			sb = 'lj 0.0 0.0 1.0'
 
 		for a in atom_types:
@@ -364,7 +363,6 @@ class UFF4MOF(force_field):
 	def enumerate_bonds(self):
 
 		SG = self.system['graph']
-		atom_types = self.atom_types
 		bond_order_dict = self.args['bond_orders']
 
 		bonds = {}
@@ -434,9 +432,6 @@ class UFF4MOF(force_field):
 				fft_i = SG.node[i]['force_field_type']
 				fft_j = SG.node[j]['force_field_type']
 				fft_k = SG.node[k]['force_field_type']
-
-				j_elem = SG.node[j]['element_symbol']
-
 
 				octa_metals = ('Al6+3', 'Sc6+3', 'Ti4+2', 'V_4+2', 'V_6+3', 'Cr4+2', 
 							   'Cr6f3', 'Mn6+3', 'Mn4+2', 'Fe6+3', 'Fe4+2', 'Co4+2', 
@@ -575,7 +570,6 @@ class UFF4MOF(force_field):
 			if len(nbors) == 3:
 				
 				fft_i = data['force_field_type']
-				hyb_i = data['hybridization']
 				fft_nbors = tuple(sorted([SG.node[m]['force_field_type'] for m in nbors]))
 				O_2_flag = False
 				# force constant is much larger if j,k, or l is O_2
@@ -619,4 +613,4 @@ class UFF4MOF(force_field):
 		self.enumerate_angles()
 		self.enumerate_dihedrals()
 		self.enumerate_impropers()
-
+		

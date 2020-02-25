@@ -1,7 +1,5 @@
 from __future__ import print_function
-from abc import abstractmethod
 import numpy as np
-import networkx as nx
 import math
 import itertools
 import atomic_data
@@ -24,6 +22,7 @@ class Dreiding(force_field):
 		types = []
 
 		for atom in SG.nodes(data=True):
+			
 			name, inf = atom
 			element_symbol = inf['element_symbol']
 			nbors = list(SG.neighbors(name))
@@ -165,7 +164,6 @@ class Dreiding(force_field):
 		node_j, node_k = nodes 
 
 		SG = self.system['graph']
-		Dreiding_atom_parameters = self.args['FF_parameters']
 
 		con_j = SG.degree(node_j) - 1
 		con_k = SG.degree(node_k) - 1
@@ -283,7 +281,6 @@ class Dreiding(force_field):
 	def enumerate_bonds(self):
 		
 		SG = self.system['graph']
-		atom_types = self.atom_types
 		bond_order_dict = self.args['bond_orders']
 
 		bonds = {}
@@ -336,7 +333,6 @@ class Dreiding(force_field):
 		
 		SG = self.system['graph']
 		bonds = self.bond_data['all_bonds']
-		bond_params = self.bond_data['params']
 		inv_bonds = dict((b,bt) for bt in bonds for b in bonds[bt])
 		angles = {}
 
@@ -359,15 +355,6 @@ class Dreiding(force_field):
 				fft_k, k = sort_ik[1]
 
 				# look up bond constants (don't need to calculate again, yay!)
-				try:
-					bond_type_ij = inv_bonds[(i,j)]
-				except KeyError:
-					bond_type_ij = inv_bonds[(j,i)]
-				try:
-					bond_type_jk = inv_bonds[(j,k)]
-				except KeyError:
-					bond_type_jk = inv_bonds[(k,j)]
-
 				angle = sorted((fft_i, fft_k))
 				angle = (angle[0], fft_j, angle[1])
 
@@ -475,7 +462,6 @@ class Dreiding(force_field):
 			if len(nbors) == 3:
 				
 				fft_i = data['force_field_type']
-				hyb_i = data['hybridization']
 				j,k,l = nbors
 
 				# only need to consider one combination

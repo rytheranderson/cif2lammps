@@ -1,17 +1,11 @@
 from __future__ import print_function
 from abc import abstractmethod
-import numpy as np
-import networkx as nx
-import math
-import itertools
 
 #import UFF4MOF_constants
 import atomic_data
 
 metals = atomic_data.metals
 mass_key = atomic_data.mass_key
-
-from cif2system import initialize_system
 
 class force_field(object):
 

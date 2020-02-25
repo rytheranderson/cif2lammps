@@ -1,7 +1,5 @@
 from __future__ import print_function
-from abc import abstractmethod
 import numpy as np
-import networkx as nx
 import math
 import itertools
 import atomic_data
@@ -24,6 +22,7 @@ class UFF(force_field):
 		types = []
 
 		for atom in SG.nodes(data=True):
+			
 			name, inf = atom
 			element_symbol = inf['element_symbol']
 			nbors = list(SG.neighbors(name))
@@ -156,7 +155,6 @@ class UFF(force_field):
 
 	def angle_parameters(self, angle, r_ij, r_jk):
 		
-		SG = self.system['graph']
 		UFF_atom_parameters = self.args['FF_parameters']
 
 		i,j,k = angle
@@ -171,7 +169,6 @@ class UFF(force_field):
 		r0_k, theta0_k, x1_k, D1_k, zeta_k, Z1_k, V_k, X_k = params_k
 
 		# linear
-		div = 1.0
 		if theta0_j == 180.0:
 			n = 1
 			b = 1
@@ -226,9 +223,6 @@ class UFF(force_field):
 		mult = con_j * con_k
 		if mult == 0.0:
 			return 'NA'
-
-		nbors_j = [UFF_atom_parameters[SG.node[n]['force_field_type']][7] for n in SG.neighbors(node_j) if n != node_k]
-		nbors_k = [UFF_atom_parameters[SG.node[n]['force_field_type']][7] for n in SG.neighbors(node_k) if n != node_j]
 
 		# cases taken from the DREIDING paper (same cases, different force constants for UFF)
 		# they are not done in order to save some lines, I don't know of a better way for doing
@@ -342,7 +336,6 @@ class UFF(force_field):
 	def enumerate_bonds(self):
 
 		SG = self.system['graph']
-		atom_types = self.atom_types
 		bond_order_dict = self.args['bond_orders']
 
 		bonds = {}
@@ -412,9 +405,6 @@ class UFF(force_field):
 				fft_i = SG.node[i]['force_field_type']
 				fft_j = SG.node[j]['force_field_type']
 				fft_k = SG.node[k]['force_field_type']
-
-				j_elem = SG.node[j]['element_symbol']
-
 
 				octa_metals = ('Al6+3', 'Sc6+3', 'Ti4+2', 'V_4+2', 'V_6+3', 'Cr4+2', 
 							   'Cr6f3', 'Mn6+3', 'Mn4+2', 'Fe6+3', 'Fe4+2', 'Co4+2', 
@@ -553,7 +543,6 @@ class UFF(force_field):
 			if len(nbors) == 3:
 				
 				fft_i = data['force_field_type']
-				hyb_i = data['hybridization']
 				fft_nbors = tuple(sorted([SG.node[m]['force_field_type'] for m in nbors]))
 				O_2_flag = False
 				# force constant is much larger if j,k, or l is O_2
@@ -588,7 +577,7 @@ class UFF(force_field):
 				count += len(impropers[i])
 				
 		self.improper_data = {'all_impropers':all_impropers, 'params':improper_params, 'style':'fourier', 'count':(count, len(all_impropers)), 'comments':improper_comments}
-
+		
 	def compile_force_field(self, charges=False):
 
 		self.type_atoms()
