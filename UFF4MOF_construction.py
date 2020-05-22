@@ -57,8 +57,12 @@ class UFF4MOF(force_field):
 				elif element_symbol in ('O', 'S'):
 					# oxygen case is complex with the UFF4MOF oxygen types
 					if element_symbol == 'O':
+						# =O for example
+						if len(nbors) == 1:
+							ty = 'O_1'
+							hyb = 'sp1'
 						# -OH, for example
-						if len(nbors) == 2 and 'A' not in bond_types and 'D' not in bond_types and not any(i in metals for i in nbor_symbols):
+						elif len(nbors) == 2 and 'A' not in bond_types and 'D' not in bond_types and not any(i in metals for i in nbor_symbols):
 							ty = 'O_3'
 							hyb = 'sp3'
 						# furan oxygen, for example
@@ -83,10 +87,15 @@ class UFF4MOF(force_field):
 							elif len(nbors) == 3 and 'Zr' in nbor_symbols:
 								ty = 'O_3_f'
 								hyb = 'sp3'
-							# IRMOF-1 type nodes
+							# 4 connected oxygens
 							elif len(nbors) == 4:
-								ty = 'O_3_f'
-								hyb = 'sp3'
+								#update this based on tetrahedral vs. square planar geometry
+								if 'Zn' in nbor_symbols:
+									ty = 'O_3_f'
+									hyb = 'sp3'
+								elif 'Co' in nbor_symbols:
+									ty = 'O_4_f'
+									hyb = 'sp3'
 							# error if no type is identified
 							else:
 								raise ValueError('Oxygen with neighbors ' + ' '.join(nbor_symbols) + ' is not parametrized')
@@ -95,7 +104,7 @@ class UFF4MOF(force_field):
 							ty = 'O_3_f'
 							hyb = 'sp3'
 						# MIL-47 type nodes
-						elif len([i for i in nbor_symbols if i in metals]) == 2 and 'H' in nbor_symbols:
+						elif len([i for i in nbor_symbols if i in metals]) == 2 and ('H' in nbor_symbols or 'C' in nbor_symbols):
 							ty = 'O_2_z'
 							hyb = 'sp2'
 						# solvent oxygen bound to a single open metal site
@@ -110,8 +119,11 @@ class UFF4MOF(force_field):
 						ty = 'S_' + str(len(nbors) + 1)
 						hyb = 'sp' + str(len(nbors) + 1)
 				# Group 9
-				elif element_symbol in ('F', 'Br'):
+				elif element_symbol in ('F', 'Cl', 'Br') and len(nbor_symbols) == 1:
 					ty = element_symbol + '_'
+					hyb = 'sp1'
+				elif element_symbol == 'Cl' and len(nbor_symbols) == 4:
+					ty = 'Cl_f'
 					hyb = 'sp1'
 				# Metals
 				elif element_symbol in metals:
@@ -119,15 +131,23 @@ class UFF4MOF(force_field):
 					if len(nbors) == 5 and element_symbol in ('Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Cu', 'Zn', 'Ni') and any(i in metals for i in nbor_symbols):
 						ty = element_symbol + '4+2'
 						hyb = 'NA'
+					# special case for 2-connected copper (linear geometry)
+					elif len(nbors) == 2 and element_symbol =='Cu':
+						ty = 'Cu1f1'
+						hyb = 'NA'
 					# S-M-S/O-M-O node
 					elif len(nbors) == 4 and element_symbol in ('Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Cu', 'Zn', 'Ni') and not any(i in metals for i in nbor_symbols):
 						ty = element_symbol + '4+2'
 						hyb = 'NA'
 					# M3O(CO2H)6 metals, e.g. MIL-100
-					elif len(nbors) in (5,6) and element_symbol in ('Al', 'Sc', 'V', 'Mn', 'Fe') and not any(i in metals for i in nbor_symbols):
+					elif len(nbors) in (5,6) and element_symbol in ('Al', 'Sc', 'V', 'Mg', 'Fe') and not any(i in metals for i in nbor_symbols):
 						ty = element_symbol + '6+3'
 						if element_symbol == 'V':
 							ty = 'V_6+3'
+						if element_symbol == 'Mg':
+							ty = 'Mg6f3'
+					elif len(nbors) in (5,6) and element_symbol in ('Co', 'Mn') and not any(i in metals for i in nbor_symbols):
+						ty = element_symbol + '6+2'
 						hyb = 'NA'
 					elif len(nbors) in (5,6) and element_symbol == 'Cr' and not any(i in metals for i in nbor_symbols):
 						ty = 'Cr6f3'
@@ -142,10 +162,10 @@ class UFF4MOF(force_field):
 						hyb = 'NA'
 				# if no type can be identified
 				else:
-					raise ValueError('No UFF4MOF type identified for ' + element_symbol + 'with neighbors ' + ' '.join(nbor_symbols))
-				
+					raise ValueError('No UFF4MOF type identified for ' + element_symbol + ' with neighbors ' + ' '.join(nbor_symbols))
+			
 			types.append((ty, element_symbol, mass))
-			SG.node[name]['force_field_type'] += ty
+			SG.node[name]['force_field_type'] = ty
 			SG.node[name]['hybridization'] = hyb
 
 		types = set(types)

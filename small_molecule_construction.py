@@ -36,7 +36,6 @@ def add_small_molecules(FF, ff_string):
 	unit_cell = np.asarray([[ax,ay,az],[bx,by,bz],[cx,cy,cz]]).T
 	inv_unit_cell = np.linalg.inv(unit_cell)
 
-
 	add_nodes = []
 	add_edges = []
 	comps = []
@@ -91,17 +90,20 @@ def add_small_molecules(FF, ff_string):
 	ntypes = max([FF.atom_types[ty] for ty in FF.atom_types])
 	nbonds = max([i for i in FF.bond_data['params']])
 	nangles = max([i for i in FF.angle_data['params']])
-	ndihedrals = max([i for i in FF.dihedral_data['params']])
 	
-	try:
-		nimpropers = max([i for i in FF.improper_data['params']])
-	except AttributeError:
-		nimpropers = 0
+	#try:
+	#	ndihedrals = max([i for i in FF.dihedral_data['params']])
+	#except AttributeError:
+	#	ndihedrals = 0
+	#try:
+	#	nimpropers = max([i for i in FF.improper_data['params']])
+	#except AttributeError:
+	#	nimpropers = 0
 
-	new_bond_types = {}
-	new_angle_types = {}
-	new_dihedral_types = {}
-	new_improper_types = {}
+	#new_bond_types = {}
+	#new_angle_types = {}
+	#new_dihedral_types = {}
+	#new_improper_types = {}
 
 	for subG, ID_string in zip([SMG.subgraph(c).copy() for c in nx.connected_components(SMG)], comps):
 
@@ -179,11 +181,7 @@ def add_small_molecules(FF, ff_string):
 
 			except KeyError:
 				pass
-
-		#print(new_bond_types)
-		#print(FF.bond_data['count'])
-		#print(FF.bond_data['params'])
-
+				
 		# add new angles
 		used_angles = []
 		ty = nangles

@@ -2,7 +2,7 @@ metals = set(['Al', 'Ti', 'V' , 'Cr', 'Mn', 'Fe',
               'Co', 'Ni', 'Cu', 'Zn', 'Zr', 'Sc'])
 
 mass_key = {
-"NA": 0.00001,
+"NA": 0.0001,
 "H" : 1.00794,
 "He": 4.002602,
 "Li": 6.941,

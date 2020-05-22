@@ -11,7 +11,6 @@ import warnings
 import UFF4MOF_constants
 import UFF_constants
 import Dreiding_constants
-import zeolite_constants
 
 # add more force field classes here as they are made
 
@@ -23,8 +22,6 @@ UFF_bond_orders_0 = UFF_constants.UFF_bond_orders_0
 
 Dreiding_atom_parameters = Dreiding_constants.Dreiding_atom_parameters
 Dreiding_bond_orders_0 = Dreiding_constants.Dreiding_bond_orders_0
-
-Nicholas_atom_parameters = zeolite_constants.Nicholas_atom_parameters
 
 mass_key = atomic_data.mass_key
 
@@ -55,8 +52,8 @@ def lammps_inputs(args):
 		FF_args = {'FF_parameters':Dreiding_atom_parameters, 'bond_orders':Dreiding_bond_orders_0}
 		cutoff = 12.50
 		mixing_rules='shift yes mix arithmetic'
-	elif ff_string == 'Nicholas':
-		FF_args = {'FF_parameters':Nicholas_atom_parameters, 'bond_orders':'NA'}
+	elif ff_string == 'MZHB':
+		FF_args = {'FF_parameters':None, 'bond_orders':None}
 		cutoff = 12.50
 		mixing_rules='shift yes mix arithmetic'
 
@@ -77,7 +74,13 @@ def lammps_inputs(args):
 	N_atoms, ty_atoms = (len(SG.nodes()), len(FF.atom_types))
 	N_bonds, ty_bonds = FF.bond_data['count']
 	N_angles, ty_angles = FF.angle_data['count']
-	N_dihedrals, ty_dihedrals = FF.dihedral_data['count']
+
+	try:
+		N_dihedrals, ty_dihedrals = FF.dihedral_data['count']
+	except AttributeError:
+		N_dihedrals = 0
+		ty_dihedrals = None
+	
 	try:
 		N_impropers, ty_impropers = FF.improper_data['count']
 	except AttributeError:
@@ -355,7 +358,10 @@ def lammps_inputs(args):
 		infile.write('pair_style      ' + FF.pair_data['style'] + ' ' + str(FF.cutoff) + '\n')
 		infile.write('bond_style      ' + FF.bond_data['style'] + '\n')
 		infile.write('angle_style     ' + FF.angle_data['style'] + '\n')
-		infile.write('dihedral_style  ' + FF.dihedral_data['style'] + '\n')
+		try:
+			infile.write('dihedral_style  ' + FF.dihedral_data['style'] + '\n')
+		except AttributeError:
+			pass
 		try:
 			infile.write('improper_style  ' + FF.improper_data['style'] + '\n')
 		except AttributeError:

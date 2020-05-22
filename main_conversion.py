@@ -13,7 +13,7 @@ from write_GULP_inputs import GULP_inputs
 from UFF4MOF_construction import UFF4MOF
 from UFF_construction import UFF
 from Dreiding_construction import Dreiding
-from zeoliteFFs_construction import Nicholas
+from zeoliteFFs_construction import MZHB
 # add more force field classes here as they are made
 
 force_fields = ['UFF4MOF']
@@ -89,9 +89,9 @@ def run_conversion():
 				elif parse_arg[1] == 'Dreiding':
 					value = Dreiding
 					optional_arguments['ff_string'] = 'Dreiding'
-				elif parse_arg[1] == 'Nicholas':
-					value = Nicholas
-					optional_arguments['ff_string'] = 'Nicholas'
+				elif parse_arg[1] == 'MZHB':
+					value = MZHB
+					optional_arguments['ff_string'] = 'MZHB'
 				# other options go here as more forcefields are made
 			else:
 				if parse_arg[1] == 'True':

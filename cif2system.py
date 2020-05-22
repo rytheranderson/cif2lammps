@@ -147,7 +147,7 @@ def cif_read(filename, charges=False):
 	
 	return elems, names, ccoords, fcoords, charge_list, bonds, (a,b,c,alpha,beta,gamma), unit_cell
 
-def initialize_system(filename, charges=False, small_molecule_cutoff=10):
+def initialize_system(filename, charges=False, small_molecule_cutoff=5):
 
 	elems, names, ccoords, fcoords, charge_list, bonds, uc_params, unit_cell = cif_read(filename, charges=charges)
 	A,B,C,alpha,beta,gamma = uc_params

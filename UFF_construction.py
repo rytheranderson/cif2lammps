@@ -43,7 +43,10 @@ class UFF(force_field):
 					hyb = 'sp1'
 				# Group 6
 				elif element_symbol in ('C', 'Si'):
-					ty = element_symbol + '_' + str(len(nbors) - 1)
+					if len(element_symbol) == 1:
+						ty = element_symbol + '_' + str(len(nbors) - 1)
+					else:
+						ty = element_symbol + str(len(nbors) - 1)
 					hyb = 'sp' + str(len(nbors) - 1)
 				# Group 7
 				elif element_symbol in ('N'):
@@ -53,8 +56,12 @@ class UFF(force_field):
 				elif element_symbol in ('O', 'S'):
 					# oxygen case is complex with the UFF4MOF oxygen types
 					if element_symbol == 'O':
+						# =O for example
+						if len(nbors) == 1:
+							ty = 'O_1'
+							hyb = 'sp1'
 						# -OH, for example
-						if len(nbors) == 2 and 'A' not in bond_types and 'D' not in bond_types and not any(i in metals for i in nbor_symbols):
+						elif len(nbors) == 2 and 'A' not in bond_types and 'D' not in bond_types and not any(i in metals for i in nbor_symbols):
 							ty = 'O_3'
 							hyb = 'sp3'
 						# furan oxygen, for example
@@ -115,7 +122,7 @@ class UFF(force_field):
 					raise ValueError('No UFF type identified for ' + element_symbol + 'with neighbors ' + ' '.join(nbor_symbols))
 					
 			types.append((ty, element_symbol, mass))
-			SG.node[name]['force_field_type'] += ty
+			SG.node[name]['force_field_type'] = ty
 			SG.node[name]['hybridization'] = hyb
 
 		types = set(types)

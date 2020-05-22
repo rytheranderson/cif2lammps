@@ -8,7 +8,7 @@ from force_field_construction import force_field
 metals = atomic_data.metals
 mass_key = atomic_data.mass_key
 
-class Nicholas(force_field):
+class MZHB(force_field):
 
 	def __init__(self, system, cutoff, args):
 
@@ -31,15 +31,13 @@ class Nicholas(force_field):
 
 			if element_symbol == 'Si':
 				ty = 'Si'
-			elif element_symbol == 'O' and 'Al' not in nbor_symbols:
+			elif element_symbol == 'O':
 				ty = 'O'
-			elif element_symbol == 'O' and 'Al' in nbor_symbols:
-				ty = 'Oa'
 			else:
 				raise ValueError('No Nicholas type identified for ' + element_symbol + 'with neighbors ' + ' '.join(nbor_symbols))
 				
 			types.append((ty, element_symbol, mass))
-			SG.node[name]['force_field_type'] += ty
+			SG.node[name]['force_field_type'] = ty
 
 		types = set(types)
 		Ntypes = len(types)
@@ -60,26 +58,25 @@ class Nicholas(force_field):
 		comments = {}
 
 		style = 'lj/cut/coul/long'
-		sb = 'lj/coul 0.0 0.0 1.0'
+		sb = 'lj/coul 1.0 1.0 1.0'
 
 		for a in atom_types:
 
 			ID = atom_types[a]
 
 			if a == 'O':
-				params[ID] = (style, 0.058491, 3.062219744)
+				params[ID] = (style, 0.07472, 1.57689)
 			elif a == 'Si':
-				params[ID] = (style, 0.162480, 3.962387454)
-				SG.node[ID]['charge'] = 1.10
+				params[ID] = (style, 0.19924, 1.95998)
 
 			comments[ID] = [a,a]
 
 		for name, data in SG.nodes(data=True):
 
 			if data['force_field_type'] == 'O':
-				data['charge'] = -0.55
+				data['charge'] = -0.35
 			elif data['force_field_type'] == 'Si':
-				data['charge'] = 1.10
+				data['charge'] = 0.70
 			else:
 				pass
 
@@ -91,15 +88,11 @@ class Nicholas(force_field):
 
 		# divide by two in LAMMPS
 		if i == 'Si' and j == 'O':
-			k_ij = 597.32/2.0
-			r_ij = 1.61
+			k_ij = 537.31/2.0
+			r_ij = 1.620
 		elif i == 'O' and j == 'Si':
-			k_ij = 597.32/2.0
-			r_ij = 1.61
-		# Urey-Bradley term is included here since the Si-O-Si angle is quartic (does not include UB)
-		elif i == 'Si' and j == 'Si': 
-			k_ij = 54.6/2.0
-			r_ij = 3.1261
+			k_ij = 537.31/2.0
+			r_ij = 1.620
 		else:
 			raise ValueError('There is a non Si-O bond, which is not yet parametrized for Nicholas')
 
@@ -108,32 +101,28 @@ class Nicholas(force_field):
 	def angle_parameters(self, angle):
 		
 		i,j,k = angle
+		style = 'harmonic'
 
 		if j == 'Si' and i == 'O' and k == 'O':
 
 			# divide by two in LAMMPS
-			style = 'harmonic'
-			K = 138.12/2.0
-			theta0 = 109.5
+			K = 156.81169/2.0
+			theta0 = 109.470
 
 			return (style, K, theta0)
 
 		elif j == 'O':
 
 			# divide by two in LAMMPS
-			style = 'quartic'
-			K1 = 10.85/2.0
-			K2 = 22.72/2.0
-			K3 = 13.26/2.
-			theta0 = 149.5
+			K = 51.19440/2.0
+			theta0 = 149.800
 
-			return (style, theta0, K1, K2, K3)	
+		return (style, K, theta0)	
 
 	def dihedral_parameters(self):
 
 		# dihedrals are the same for everything
-		return ('harmonic', -0.70/2.0, 1, 3)
-		
+		pass		
 
 	def improper_parameters(self, fft_i, O_2_flag):
 
@@ -159,31 +148,6 @@ class Nicholas(force_field):
 				bonds[bond].append((i,j))
 			except KeyError:
 				bonds[bond] = [(i,j)]
-
-		# Si-Si Urey-Bradley term
-		count = 0
-		for n in SG.nodes(data=True):
-		
-			name,data = n
-		
-			if data['force_field_type'] == 'O':
-		
-				nbors = list(SG.neighbors(name))
-		
-				if len(nbors) != 2:
-					raise ValueError('found an oxygen with more than two neighbors, only pure silica zeolites are parametrized.')
-		
-				i,j = nbors
-				fft_i = SG.node[i]['force_field_type']
-				fft_j = SG.node[j]['force_field_type']
-				bond = tuple(sorted([fft_i, fft_j]))
-
-				count += 1
-		
-				try:
-					bonds[bond].append((i,j))
-				except KeyError:
-					bonds[bond] = [(i,j)]
 
 		bond_params = {}
 		bond_comments = {}
@@ -261,50 +225,7 @@ class Nicholas(force_field):
 
 	def enumerate_dihedrals(self):
 		
-		SG = self.system['graph']
-		dihedrals = {}
-		dihedral_params = {}
-
-		for e in SG.edges(data=True):
-
-			j,k = e[0:2]
-			fft_j = SG.node[j]['force_field_type']
-			fft_k = SG.node[k]['force_field_type']
-
-			nbors_j = [n for n in SG.neighbors(j) if n != k]
-			nbors_k = [n for n in SG.neighbors(k) if n != j]
-
-			il_pairs = list(itertools.product(nbors_j, nbors_k))
-			dihedral_list = [(p[0],j,k,p[1]) for p in il_pairs]
-
-			bond = tuple(sorted([fft_j, fft_k]))
-
-			# here I calculate  parameters for each dihedral (I know) but I prefer identifying
-			# those dihedrals before passing to the final dihedral data construction.
-			params = self.dihedral_parameters()
-			
-			if params != 'NA':
-				try:
-					dihedrals[bond].extend(dihedral_list)
-				except KeyError:
-					dihedrals[bond] = dihedral_list
-					dihedral_params[bond] = params
-
-		all_dihedrals = {}
-		dihedral_comments = {}
-		indexed_dihedral_params = {}
-		ID = 0
-		count = 0
-		for d in dihedrals:
-
-			ID += 1
-			params = dihedral_params[d]
-			all_dihedrals[ID] = dihedrals[d]
-			indexed_dihedral_params[ID] = list(dihedral_params[d])
-			dihedral_comments[ID] = ['X'] + list(d) + ['X']
-			count += len(dihedrals[d])
-
-		self.dihedral_data = {'all_dihedrals':all_dihedrals, 'params':indexed_dihedral_params, 'style':'harmonic', 'count':(count, len(all_dihedrals)), 'comments':dihedral_comments}
+		pass
 
 	def enumerate_impropers(self):
 		

@@ -96,7 +96,7 @@ class Dreiding(force_field):
 					raise ValueError('No Dreiding type identified for ' + element_symbol + 'with neighbors ' + ' '.join(nbor_symbols))
 					
 			types.append((ty, element_symbol, mass))
-			SG.node[name]['force_field_type'] += ty
+			SG.node[name]['force_field_type'] = ty
 			SG.node[name]['hybridization'] = hyb
 
 		types = set(types)
