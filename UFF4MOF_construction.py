@@ -4,6 +4,7 @@ import math
 import itertools
 import atomic_data
 from force_field_construction import force_field
+from cif2system import PBC3DF_sym
 
 metals = atomic_data.metals
 mass_key = atomic_data.mass_key
@@ -15,6 +16,19 @@ class UFF4MOF(force_field):
 		self.system = system
 		self.cutoff = cutoff
 		self.args = args
+
+		pi = np.pi
+		a,b,c,alpha,beta,gamma = system['box']
+		ax = a
+		ay = 0.0
+		az = 0.0
+		bx = b * np.cos(gamma * pi / 180.0)
+		by = b * np.sin(gamma * pi / 180.0)
+		bz = 0.0
+		cx = c * np.cos(beta * pi / 180.0)
+		cy = (c * b * np.cos(alpha * pi /180.0) - bx * cx) / by
+		cz = (c ** 2.0 - cx ** 2.0 - cy ** 2.0) ** 0.5
+		self.unit_cell = np.asarray([[ax,ay,az],[bx,by,bz],[cx,cy,cz]]).T
 
 	def type_atoms(self):
 
@@ -89,13 +103,25 @@ class UFF4MOF(force_field):
 								hyb = 'sp3'
 							# 4 connected oxygens
 							elif len(nbors) == 4:
-								#update this based on tetrahedral vs. square planar geometry
-								if 'Zn' in nbor_symbols:
-									ty = 'O_3_f'
-									hyb = 'sp3'
-								elif 'Co' in nbor_symbols:
+
+								dist_j, sym_j = PBC3DF_sym(SG.node[nbors[0]]['fractional_position'], inf['fractional_position'])
+								dist_k, sym_k = PBC3DF_sym(SG.node[nbors[1]]['fractional_position'], inf['fractional_position'])
+
+								dist_j = np.dot(self.unit_cell, dist_j)
+								dist_k = np.dot(self.unit_cell, dist_k)
+
+								cosine_angle = np.dot(dist_j, dist_k) / (np.linalg.norm(dist_j) * np.linalg.norm(dist_k))
+								angle = (180.0/np.pi) * np.arccos(cosine_angle)
+
+								# update this based on tetrahedral vs. square planar geometry
+								if abs(angle - 90.0) < 5.0 or abs(angle - 180) < 5.0:
 									ty = 'O_4_f'
 									hyb = 'sp3'
+
+								elif abs(angle - 109.45) < 5.0:
+									ty = 'O_3_f'
+									hyb = 'sp3'
+
 							# error if no type is identified
 							else:
 								raise ValueError('Oxygen with neighbors ' + ' '.join(nbor_symbols) + ' is not parametrized')
@@ -127,35 +153,53 @@ class UFF4MOF(force_field):
 					hyb = 'sp1'
 				# Metals
 				elif element_symbol in metals:
+
+					if len(element_symbol) == 1:
+						add_symbol = element_symbol + '_'
+					else:
+						add_symbol = element_symbol
+
 					# paddlewheel metals
 					if len(nbors) == 5 and element_symbol in ('Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Cu', 'Zn', 'Ni') and any(i in metals for i in nbor_symbols):
-						ty = element_symbol + '4+2'
+						ty = add_symbol + '4+2'
 						hyb = 'NA'
 					# special case for 2-connected copper (linear geometry)
 					elif len(nbors) == 2 and element_symbol =='Cu':
 						ty = 'Cu1f1'
 						hyb = 'NA'
-					# S-M-S/O-M-O node
-					elif len(nbors) == 4 and element_symbol in ('Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Cu', 'Zn', 'Ni') and not any(i in metals for i in nbor_symbols):
-						ty = element_symbol + '4+2'
-						hyb = 'NA'
 					# M3O(CO2H)6 metals, e.g. MIL-100
-					elif len(nbors) in (5,6) and element_symbol in ('Al', 'Sc', 'V', 'Mg', 'Fe') and not any(i in metals for i in nbor_symbols):
-						ty = element_symbol + '6+3'
-						if element_symbol == 'V':
-							ty = 'V_6+3'
+					elif len(nbors) in (5,6) and element_symbol in ('Al', 'Cr', 'Sc', 'V', 'Mg', 'Fe') and not any(i in metals for i in nbor_symbols):
+						ty = add_symbol + '6+3'
+						if element_symbol == 'Cr':
+							ty = 'Cr6f3'
 						if element_symbol == 'Mg':
 							ty = 'Mg6f3'
+						hyb = 'NA'
 					elif len(nbors) in (5,6) and element_symbol in ('Co', 'Mn') and not any(i in metals for i in nbor_symbols):
-						ty = element_symbol + '6+2'
-						hyb = 'NA'
-					elif len(nbors) in (5,6) and element_symbol == 'Cr' and not any(i in metals for i in nbor_symbols):
-						ty = 'Cr6f3'
-						hyb = 'NA'
+						ty = add_symbol + '6+2'
+						hyb = 'NA'			
 					# IRMOF-1 node
-					elif len(nbors) == 4 and element_symbol == 'Zn':
-						ty = 'Zn3f2'
+					elif len(nbors) == 4:
+
+						dist_j, sym_j = PBC3DF_sym(SG.node[nbors[0]]['fractional_position'], inf['fractional_position'])
+						dist_k, sym_k = PBC3DF_sym(SG.node[nbors[1]]['fractional_position'], inf['fractional_position'])
+
+						dist_j = np.dot(self.unit_cell, dist_j)
+						dist_k = np.dot(self.unit_cell, dist_k)
+
+						cosine_angle = np.dot(dist_j, dist_k) / (np.linalg.norm(dist_j) * np.linalg.norm(dist_k))
+						angle = (180.0/np.pi) * np.arccos(cosine_angle)
+						
+						if abs(angle - 90.0) < 5.0 or abs(angle - 180) < 5.0:
+							ty = add_symbol + '4+2'
+							hyb = 'sp3'
+
+						elif abs(angle - 109.45) < 5.0:
+							ty = add_symbol + '3f2'
+							hyb = 'sp3'
+
 						hyb = 'NA'
+
 					# Zr node
 					elif len(nbors) in (7,8) and element_symbol == 'Zr':
 						ty = 'Zr8f4'
@@ -456,15 +500,6 @@ class UFF4MOF(force_field):
 				octa_metals = ('Al6+3', 'Sc6+3', 'Ti4+2', 'V_4+2', 'V_6+3', 'Cr4+2', 
 							   'Cr6f3', 'Mn6+3', 'Mn4+2', 'Fe6+3', 'Fe4+2', 'Co4+2', 
 							   'Cu4+2', 'Zn4+2')
-
-				if fft_j in octa_metals:
-					i_coord = SG.node[i]['cartesian_position']
-					j_coord = SG.node[j]['cartesian_position']
-					k_coord = SG.node[k]['cartesian_position']
-					ij = i_coord - j_coord
-					jk = j_coord - k_coord
-					cosine_angle = np.dot(ij,jk) / (np.linalg.norm(ij) * np.linalg.norm(jk))
-					angle = (180.0/np.pi) * np.arccos(cosine_angle)
 
 				sort_ik = sorted([(fft_i,i),(fft_k,k)], key=lambda x:x[0])
 				fft_i, i = sort_ik[0]
