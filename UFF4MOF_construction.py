@@ -181,10 +181,13 @@ class UFF4MOF(force_field):
 							UFF4MOF_atom_parameters[add_symbol + '6f3']
 							ty = add_symbol + '6f3'
 						except KeyError:
-							ty = add_symbol + '6+3'
-					elif len(nbors) in (5,6) and element_symbol in ('Co', 'Mn') and not any(i in metals for i in nbor_symbols):
-						ty = add_symbol + '6+2'
-
+							try:
+								UFF4MOF_atom_parameters[add_symbol + '6+3']
+								ty = add_symbol + '6+3'
+							except KeyError:
+								UFF4MOF_atom_parameters[add_symbol + '6+2']
+								ty = add_symbol + '6+2'
+								
 					# IRMOF-1 node
 					elif len(nbors) == 4:
 
