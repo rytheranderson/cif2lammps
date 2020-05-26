@@ -32,6 +32,7 @@ class UFF4MOF(force_field):
 
 	def type_atoms(self):
 
+		UFF4MOF_atom_parameters = self.args['FF_parameters']
 		SG = self.system['graph']
 		types = []
 
@@ -43,6 +44,17 @@ class UFF4MOF(force_field):
 			nbor_symbols = [SG.nodes[n]['element_symbol'] for n in nbors]
 			bond_types = [SG.get_edge_data(name, n)['bond_type'] for n in nbors]
 			mass = mass_key[element_symbol]
+
+			if len(nbors) > 1:
+
+				dist_j, sym_j = PBC3DF_sym(SG.node[nbors[0]]['fractional_position'], inf['fractional_position'])
+				dist_k, sym_k = PBC3DF_sym(SG.node[nbors[1]]['fractional_position'], inf['fractional_position'])
+	
+				dist_j = np.dot(self.unit_cell, dist_j)
+				dist_k = np.dot(self.unit_cell, dist_k)
+	
+				cosine_angle = np.dot(dist_j, dist_k) / (np.linalg.norm(dist_j) * np.linalg.norm(dist_k))
+				angle = (180.0/np.pi) * np.arccos(cosine_angle)
 
 			# Atom typing for UFF4MOF, this can be made much more robust with pattern matching,
 			# but this works for most ToBaCCo MOFs, use at your own risk.
@@ -79,6 +91,10 @@ class UFF4MOF(force_field):
 						elif len(nbors) == 2 and 'A' not in bond_types and 'D' not in bond_types and not any(i in metals for i in nbor_symbols):
 							ty = 'O_3'
 							hyb = 'sp3'
+						# coordinated solvent, same parameters as O_3, but different name to modulate bond orders
+						elif len(nbors) == 2 and len([i for i in nbor_symbols if i in metals]) == 1 and 'H' in nbor_symbols:
+							ty = 'O_3_M'
+							hyb = 'sp3'
 						# furan oxygen, for example
 						elif len(nbors) == 2 and 'A' in bond_types and not any(i in metals for i in nbor_symbols):
 							ty = 'O_R'
@@ -87,56 +103,39 @@ class UFF4MOF(force_field):
 						elif len(nbors) == 2 and 'D' in bond_types and not any(i in metals for i in nbor_symbols):
 							ty = 'O_2'
 							hyb = 'sp2'
-						# carboxylate oxygen bound to metal node
+						# carboxylate oxygen bound to metal node, same parameters as O_2, but different name to modulate bond orders
 						elif len(nbors) == 2 and any(i in metals for i in nbor_symbols) and 'C' in nbor_symbols:
 							ty = 'O_2_M'
 							hyb = 'sp2'
-						# node oxygens bound only to metals (typically central)
-						elif all(i in metals for i in nbor_symbols):
-							# MIL-100 type nodes
-							if len(nbors) == 3 and 'Zr' not in nbor_symbols:
+						# 3 connected oxygens
+						elif len(nbors) == 3 and any(i in metals for i in nbor_symbols):
+
+							dist_triangle = abs(angle-120.0)
+							dist_tetrahedral = abs(angle-109.47)
+
+							if dist_triangle < dist_tetrahedral:
 								ty = 'O_2_z'
 								hyb = 'sp2'
-							# UIO type nodes, oxygen without bound hydrogen
-							elif len(nbors) == 3 and 'Zr' in nbor_symbols:
+
+							else:
 								ty = 'O_3_f'
 								hyb = 'sp3'
-							# 4 connected oxygens
-							elif len(nbors) == 4:
 
-								dist_j, sym_j = PBC3DF_sym(SG.node[nbors[0]]['fractional_position'], inf['fractional_position'])
-								dist_k, sym_k = PBC3DF_sym(SG.node[nbors[1]]['fractional_position'], inf['fractional_position'])
+						# 4 connected oxygens
+						elif len(nbors) == 4:
 
-								dist_j = np.dot(self.unit_cell, dist_j)
-								dist_k = np.dot(self.unit_cell, dist_k)
+							dist_square_linear = min((abs(angle-90.0), abs(angle-180.0)))
+							dist_tetrahedral = abs(angle-109.47)
 
-								cosine_angle = np.dot(dist_j, dist_k) / (np.linalg.norm(dist_j) * np.linalg.norm(dist_k))
-								angle = (180.0/np.pi) * np.arccos(cosine_angle)
+							# update this based on tetrahedral vs. square planar geometry
+							if dist_square_linear < dist_tetrahedral:
+								ty = 'O_4_f'
+								hyb = 'sp3'
 
-								# update this based on tetrahedral vs. square planar geometry
-								if abs(angle - 90.0) < 5.0 or abs(angle - 180) < 5.0:
-									ty = 'O_4_f'
-									hyb = 'sp3'
-
-								elif abs(angle - 109.45) < 5.0:
-									ty = 'O_3_f'
-									hyb = 'sp3'
-
-							# error if no type is identified
 							else:
-								raise ValueError('Oxygen with neighbors ' + ' '.join(nbor_symbols) + ' is not parametrized')
-						# oxygen in the UIO type nodes, with bound hydrogen
-						elif len([i for i in nbor_symbols if i in metals]) == 3 and 'Zr' in nbor_symbols:
-							ty = 'O_3_f'
-							hyb = 'sp3'
-						# MIL-47 type nodes
-						elif len([i for i in nbor_symbols if i in metals]) == 2 and ('H' in nbor_symbols or 'C' in nbor_symbols):
-							ty = 'O_2_z'
-							hyb = 'sp2'
-						# solvent oxygen bound to a single open metal site
-						elif len([i for i in nbor_symbols if i in metals]) == 1 and 'H' in nbor_symbols:
-							ty = 'O_3_M'
-							hyb = 'sp3'
+								ty = 'O_3_f'
+								hyb = 'sp3'
+
 						# error if no type is identified
 						else:
 							raise ValueError('Oxygen with neighbors ' + ' '.join(nbor_symbols) + ' is not parametrized')
@@ -154,56 +153,57 @@ class UFF4MOF(force_field):
 				# Metals
 				elif element_symbol in metals:
 
+					hyb = 'NA'
+
+					dist_square_linear = min((abs(angle-90.0), abs(angle-180.0)))
+					dist_tetrahedral = abs(angle-109.47)
+
 					if len(element_symbol) == 1:
 						add_symbol = element_symbol + '_'
 					else:
 						add_symbol = element_symbol
 
 					# paddlewheel metals
-					if len(nbors) == 5 and element_symbol in ('Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Cu', 'Zn', 'Ni') and any(i in metals for i in nbor_symbols):
-						ty = add_symbol + '4+2'
-						hyb = 'NA'
+					if len(nbors) == 5 and any(i in metals for i in nbor_symbols) and (dist_square_linear < dist_tetrahedral):
+						try:
+							UFF4MOF_atom_parameters[add_symbol + '4f2']
+							ty = add_symbol + '4f2'
+						except KeyError:
+							ty = add_symbol + '4+2'
+
 					# special case for 2-connected copper (linear geometry)
-					elif len(nbors) == 2 and element_symbol =='Cu':
-						ty = 'Cu1f1'
-						hyb = 'NA'
+					elif len(nbors) == 2 and abs(angle - 180.0) < 10.0:
+						add_symbol + '1f1'
+
 					# M3O(CO2H)6 metals, e.g. MIL-100
-					elif len(nbors) in (5,6) and element_symbol in ('Al', 'Cr', 'Sc', 'V', 'Mg', 'Fe') and not any(i in metals for i in nbor_symbols):
-						ty = add_symbol + '6+3'
-						if element_symbol == 'Cr':
-							ty = 'Cr6f3'
-						if element_symbol == 'Mg':
-							ty = 'Mg6f3'
-						hyb = 'NA'
+					elif len(nbors) in (5,6) and not any(i in metals for i in nbor_symbols) and (dist_square_linear < dist_tetrahedral):
+						try:
+							UFF4MOF_atom_parameters[add_symbol + '6f3']
+							ty = add_symbol + '6f3'
+						except KeyError:
+							ty = add_symbol + '6+3'
 					elif len(nbors) in (5,6) and element_symbol in ('Co', 'Mn') and not any(i in metals for i in nbor_symbols):
 						ty = add_symbol + '6+2'
-						hyb = 'NA'			
+
 					# IRMOF-1 node
 					elif len(nbors) == 4:
 
-						dist_j, sym_j = PBC3DF_sym(SG.node[nbors[0]]['fractional_position'], inf['fractional_position'])
-						dist_k, sym_k = PBC3DF_sym(SG.node[nbors[1]]['fractional_position'], inf['fractional_position'])
+						if dist_square_linear < dist_tetrahedral:
+							try:
+								UFF4MOF_atom_parameters[add_symbol + '4f2']
+								ty = add_symbol + '4f2'
+							except KeyError:
+								ty = add_symbol + '4+2'
+						else:
+							try:
+								UFF4MOF_atom_parameters[add_symbol + '3f2']
+								ty = add_symbol + '3f2'
+							except KeyError:
+								ty = add_symbol + '3+2'
 
-						dist_j = np.dot(self.unit_cell, dist_j)
-						dist_k = np.dot(self.unit_cell, dist_k)
-
-						cosine_angle = np.dot(dist_j, dist_k) / (np.linalg.norm(dist_j) * np.linalg.norm(dist_k))
-						angle = (180.0/np.pi) * np.arccos(cosine_angle)
-						
-						if abs(angle - 90.0) < 5.0 or abs(angle - 180) < 5.0:
-							ty = add_symbol + '4+2'
-							hyb = 'sp3'
-
-						elif abs(angle - 109.45) < 5.0:
-							ty = add_symbol + '3f2'
-							hyb = 'sp3'
-
-						hyb = 'NA'
-
-					# Zr node
-					elif len(nbors) in (7,8) and element_symbol == 'Zr':
-						ty = 'Zr8f4'
-						hyb = 'NA'
+					# 7 and 8c metals
+					elif len(nbors) in (7,8) and element_symbol in ('Cd', 'Eu', 'Tb', 'Zr'):
+						ty = element_symbol + '8f4'
 				# if no type can be identified
 				else:
 					raise ValueError('No UFF4MOF type identified for ' + element_symbol + ' with neighbors ' + ' '.join(nbor_symbols))

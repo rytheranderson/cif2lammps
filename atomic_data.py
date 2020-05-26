@@ -1,4 +1,4 @@
-metals = set(['Al', 'Ti', 'V' , 'Cr', 'Mn', 'Fe', 
+metals = set(['Al', 'Ti', 'V' , 'Cr', 'Mn', 'Fe', 'Eu', 'Tb', 'Ag',  
               'Co', 'Ni', 'Cu', 'Zn', 'Zr', 'Sc'])
 
 mass_key = {

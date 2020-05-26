@@ -1,5 +1,6 @@
 from __future__ import print_function
 import multiprocessing 
+import argparse
 from multiprocessing import Pool
 import numpy as np
 import glob
@@ -72,53 +73,34 @@ def parallel_GULP_conversion(directory, force_field=UFF4MOF, outdir='GULP_inputs
 
 def run_conversion():
 
-	arguments = sys.argv[1:]
-	directory = arguments[0]
+	parser = argparse.ArgumentParser(description='Optional arguments for running cif2lammps')
+	parser.add_argument('--cifs', action='store', dest='directory', type=str, required=True, help='the cifs to convert')
+	parser.add_argument('--force_field', action='store', dest='ff_string', type=str, required=False, default='UFF4MOF', help='the force field to use')
+	parser.add_argument('--small_molecule_force_field', action='store', dest='sm_ff_string', type=str, required=False, default='TraPPE', help='the force field to use for small molecules')
+	parser.add_argument('--outdir', action='store', dest='outdir', type=str, required=False, default='unopt_lammps_data', help='where to write the lammps inputs')
+	parser.add_argument('--charges', action='store_true', dest='charges', required=False, default=False, help='switch on charges')
+	parser.add_argument('--replication', action='store', dest='replication', type=str, required=False, default='1x1x1', help='replications to use')
+	parser.add_argument('--GULP', action='store_true', dest='GULP', required=False, default=False, help='write GULP inputs instead of LAMMPS')
+	parser.add_argument('--parallel', action='store_true', dest='parallel', required=False, default=False, help='switch on parallel conversion')
 
-	optional_arguments = {}
-	for arg in arguments[1:]:
-		if '--' in arg:
-			parse_arg = re.sub('[--]', '', arg).split('=')
-			if parse_arg[0] == 'force_field':
-				if parse_arg[1] == 'UFF4MOF':
-					value = UFF4MOF
-					optional_arguments['ff_string'] = 'UFF4MOF'
-				elif parse_arg[1] == 'UFF':
-					value = UFF
-					optional_arguments['ff_string'] = 'UFF'
-				elif parse_arg[1] == 'Dreiding':
-					value = Dreiding
-					optional_arguments['ff_string'] = 'Dreiding'
-				elif parse_arg[1] == 'MZHB':
-					value = MZHB
-					optional_arguments['ff_string'] = 'MZHB'
-				# other options go here as more forcefields are made
-			else:
-				if parse_arg[1] == 'True':
-					value = True
-				elif parse_arg[1] == 'False':
-					value = False
-				else:
-					value = parse_arg[1]
+	args = parser.parse_args()
+	print(args)
 
-		optional_arguments[parse_arg[0]] = value
+	ff_dict = {'UFF4MOF':UFF4MOF, 'UFF':UFF, 'Dreiding':Dreiding, 'MZHB':MZHB}
+	force_field = ff_dict[args.ff_string]
 
-	try:
+	optional_arguments = {'force_field':force_field, 'ff_string':args.ff_string, 'small_molecule_force_field':args.sm_ff_string, 
+						  'outdir':args.outdir, 'charges':args.charges, 'replication':args.replication}
+
 		
-		if optional_arguments['GULP']:
-			print('converting to GULP format...')
-			parallel_GULP_conversion(directory, **optional_arguments)
+	if args.GULP:
+		print('converting to GULP format...')
+		parallel_GULP_conversion(args.directory, **optional_arguments)
 
-	except KeyError:
-
-		try:
-			if optional_arguments['parallel']:
-				parallel_conversion(directory, **optional_arguments)
-			else:
-				serial_conversion(directory, **optional_arguments)
-				
-		except KeyError:
-			serial_conversion(directory, **optional_arguments)
+	if args.parallel:
+		parallel_conversion(args.directory, **optional_arguments)
+	else:
+		serial_conversion(args.directory, **optional_arguments)
 
 start_time = time.time()
 if __name__ == '__main__': 
