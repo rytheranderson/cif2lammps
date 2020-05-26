@@ -81,7 +81,9 @@ class UFF4MOF(force_field):
 					hyb = 'sp' + str(len(nbors))
 				# Group 8
 				elif element_symbol in ('O', 'S'):
-					# oxygen case is complex with the UFF4MOF oxygen types
+					
+					### oxygens ###
+					
 					if element_symbol == 'O':
 						# =O for example
 						if len(nbors) == 1:
@@ -150,7 +152,9 @@ class UFF4MOF(force_field):
 				elif element_symbol == 'Cl' and len(nbor_symbols) == 4:
 					ty = 'Cl_f'
 					hyb = 'sp1'
-				# Metals
+				
+				### metals ###
+				
 				elif element_symbol in metals:
 
 					hyb = 'NA'
@@ -163,32 +167,11 @@ class UFF4MOF(force_field):
 					else:
 						add_symbol = element_symbol
 
-					# paddlewheel metals
-					if len(nbors) == 5 and any(i in metals for i in nbor_symbols) and (dist_square_linear < dist_tetrahedral):
-						try:
-							UFF4MOF_atom_parameters[add_symbol + '4f2']
-							ty = add_symbol + '4f2'
-						except KeyError:
-							ty = add_symbol + '4+2'
-
-					# special case for 2-connected copper (linear geometry)
-					elif len(nbors) == 2 and abs(angle - 180.0) < 10.0:
+					# 2 connected, linear
+					if len(nbors) == 2 and abs(angle - 180.0) < 10.0:
 						add_symbol + '1f1'
 
-					# M3O(CO2H)6 metals, e.g. MIL-100
-					elif len(nbors) in (5,6) and not any(i in metals for i in nbor_symbols) and (dist_square_linear < dist_tetrahedral):
-						try:
-							UFF4MOF_atom_parameters[add_symbol + '6f3']
-							ty = add_symbol + '6f3'
-						except KeyError:
-							try:
-								UFF4MOF_atom_parameters[add_symbol + '6+3']
-								ty = add_symbol + '6+3'
-							except KeyError:
-								UFF4MOF_atom_parameters[add_symbol + '6+2']
-								ty = add_symbol + '6+2'
-								
-					# IRMOF-1 node
+					# 4 connected, square planar or tetrahedral
 					elif len(nbors) == 4:
 
 						if dist_square_linear < dist_tetrahedral:
@@ -204,9 +187,34 @@ class UFF4MOF(force_field):
 							except KeyError:
 								ty = add_symbol + '3+2'
 
+					# paddlewheels
+					elif len(nbors) == 5 and any(i in metals for i in nbor_symbols) and (dist_square_linear < dist_tetrahedral):
+						try:
+							UFF4MOF_atom_parameters[add_symbol + '4f2']
+							ty = add_symbol + '4f2'
+						except KeyError:
+							ty = add_symbol + '4+2'
+
+					# M3O(CO2H)6 metals, e.g. MIL-100
+					elif len(nbors) in (5,6) and not any(i in metals for i in nbor_symbols) and (dist_square_linear < dist_tetrahedral):
+						try:
+							UFF4MOF_atom_parameters[add_symbol + '6f3']
+							ty = add_symbol + '6f3'
+						except KeyError:
+							try:
+								UFF4MOF_atom_parameters[add_symbol + '6+3']
+								ty = add_symbol + '6+3'
+							except KeyError:
+								UFF4MOF_atom_parameters[add_symbol + '6+2']
+								ty = add_symbol + '6+2'
+
 					# 7 and 8c metals
 					elif len(nbors) in (7,8) and element_symbol in ('Cd', 'Eu', 'Tb', 'Zr'):
 						ty = element_symbol + '8f4'
+
+					else:
+						raise ValueError('No UFF4MOF type identified for ' + element_symbol + ' with neighbors ' + ' '.join(nbor_symbols))
+
 				# if no type can be identified
 				else:
 					raise ValueError('No UFF4MOF type identified for ' + element_symbol + ' with neighbors ' + ' '.join(nbor_symbols))
@@ -499,10 +507,6 @@ class UFF4MOF(force_field):
 				fft_i = SG.node[i]['force_field_type']
 				fft_j = SG.node[j]['force_field_type']
 				fft_k = SG.node[k]['force_field_type']
-
-				octa_metals = ('Al6+3', 'Sc6+3', 'Ti4+2', 'V_4+2', 'V_6+3', 'Cr4+2', 
-							   'Cr6f3', 'Mn6+3', 'Mn4+2', 'Fe6+3', 'Fe4+2', 'Co4+2', 
-							   'Cu4+2', 'Zn4+2')
 
 				sort_ik = sorted([(fft_i,i),(fft_k,k)], key=lambda x:x[0])
 				fft_i, i = sort_ik[0]
