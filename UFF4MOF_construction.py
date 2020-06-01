@@ -47,14 +47,32 @@ class UFF4MOF(force_field):
 
 			if len(nbors) > 1:
 
-				dist_j, sym_j = PBC3DF_sym(SG.node[nbors[0]]['fractional_position'], inf['fractional_position'])
-				dist_k, sym_k = PBC3DF_sym(SG.node[nbors[1]]['fractional_position'], inf['fractional_position'])
-	
-				dist_j = np.dot(self.unit_cell, dist_j)
-				dist_k = np.dot(self.unit_cell, dist_k)
-	
-				cosine_angle = np.dot(dist_j, dist_k) / (np.linalg.norm(dist_j) * np.linalg.norm(dist_k))
-				angle = (180.0/np.pi) * np.arccos(cosine_angle)
+				angles = []
+
+				for n0,n1 in itertools.combinations(nbors, 2):
+
+					dist_j, sym_j = PBC3DF_sym(SG.node[n0]['fractional_position'], inf['fractional_position'])
+					dist_k, sym_k = PBC3DF_sym(SG.node[n1]['fractional_position'], inf['fractional_position'])
+						
+					dist_j = np.dot(self.unit_cell, dist_j)
+					dist_k = np.dot(self.unit_cell, dist_k)
+					
+					cosine_angle = np.dot(dist_j, dist_k) / (np.linalg.norm(dist_j) * np.linalg.norm(dist_k))
+
+					if cosine_angle > 1:
+						cosine_angle = 1
+					elif cosine_angle < -1:
+						cosine_angle = -1
+
+					ang = (180.0/np.pi) * np.arccos(cosine_angle)
+
+					angles.append(ang)
+
+				angles = np.array(angles)
+				dist_linear = min(np.abs(angles - 180.0))
+				dist_triangle = min(np.abs(angles - 120.0))
+				dist_square = min(min(np.abs(angles - 90.0)), min(np.abs(angles - 180.0)))
+				dist_tetrahedral = min(np.abs(angles - 109.47))
 
 			# Atom typing for UFF4MOF, this can be made much more robust with pattern matching,
 			# but this works for most ToBaCCo MOFs, use at your own risk.
@@ -109,34 +127,28 @@ class UFF4MOF(force_field):
 						elif len(nbors) == 2 and any(i in metals for i in nbor_symbols) and 'C' in nbor_symbols:
 							ty = 'O_2_M'
 							hyb = 'sp2'
-						# 3 connected oxygens
-						elif len(nbors) == 3 and any(i in metals for i in nbor_symbols):
 
-							dist_triangle = abs(angle-120.0)
-							dist_tetrahedral = abs(angle-109.47)
+						# 2 connected oxygens bonded to metals
+						elif len(nbors) == 2 and any(i in metals for i in nbor_symbols):
+							ty = 'O_3'
+							hyb = 'sp2'
+
+						# 3 connected oxygens bonded to metals
+						elif len(nbors) == 3 and any(i in metals for i in nbor_symbols):
 
 							if dist_triangle < dist_tetrahedral:
 								ty = 'O_2_z'
 								hyb = 'sp2'
-
+	
 							else:
 								ty = 'O_3_f'
 								hyb = 'sp3'
-
-						# 4 connected oxygens
+	
+						# 4 connected oxygens bonded to metals
 						elif len(nbors) == 4:
-
-							dist_square_linear = min((abs(angle-90.0), abs(angle-180.0)))
-							dist_tetrahedral = abs(angle-109.47)
-
-							# update this based on tetrahedral vs. square planar geometry
-							if dist_square_linear < dist_tetrahedral:
-								ty = 'O_4_f'
-								hyb = 'sp3'
-
-							else:
-								ty = 'O_3_f'
-								hyb = 'sp3'
+							
+							ty = 'O_3_f'
+							hyb = 'sp3'
 
 						# error if no type is identified
 						else:
@@ -159,22 +171,19 @@ class UFF4MOF(force_field):
 
 					hyb = 'NA'
 
-					dist_square_linear = min((abs(angle-90.0), abs(angle-180.0)))
-					dist_tetrahedral = abs(angle-109.47)
-
 					if len(element_symbol) == 1:
 						add_symbol = element_symbol + '_'
 					else:
 						add_symbol = element_symbol
 
 					# 2 connected, linear
-					if len(nbors) == 2 and abs(angle - 180.0) < 10.0:
+					if len(nbors) == 2 and dist_linear < 10.0:
 						add_symbol + '1f1'
 
 					# 4 connected, square planar or tetrahedral
 					elif len(nbors) == 4:
 
-						if dist_square_linear < dist_tetrahedral:
+						if dist_square < dist_tetrahedral:
 							try:
 								UFF4MOF_atom_parameters[add_symbol + '4f2']
 								ty = add_symbol + '4f2'
@@ -188,7 +197,7 @@ class UFF4MOF(force_field):
 								ty = add_symbol + '3+2'
 
 					# paddlewheels
-					elif len(nbors) == 5 and any(i in metals for i in nbor_symbols) and (dist_square_linear < dist_tetrahedral):
+					elif len(nbors) == 5 and any(i in metals for i in nbor_symbols) and (dist_square < dist_tetrahedral):
 						try:
 							UFF4MOF_atom_parameters[add_symbol + '4f2']
 							ty = add_symbol + '4f2'
@@ -196,7 +205,7 @@ class UFF4MOF(force_field):
 							ty = add_symbol + '4+2'
 
 					# M3O(CO2H)6 metals, e.g. MIL-100
-					elif len(nbors) in (5,6) and not any(i in metals for i in nbor_symbols) and (dist_square_linear < dist_tetrahedral):
+					elif len(nbors) in (5,6) and not any(i in metals for i in nbor_symbols) and (dist_square < dist_tetrahedral):
 						try:
 							UFF4MOF_atom_parameters[add_symbol + '6f3']
 							ty = add_symbol + '6f3'
@@ -205,12 +214,27 @@ class UFF4MOF(force_field):
 								UFF4MOF_atom_parameters[add_symbol + '6+3']
 								ty = add_symbol + '6+3'
 							except KeyError:
-								UFF4MOF_atom_parameters[add_symbol + '6+2']
-								ty = add_symbol + '6+2'
+								try:
+									UFF4MOF_atom_parameters[add_symbol + '6+2']
+									ty = add_symbol + '6+2'
+								except KeyError:
+									try: # this should always be the last resort
+										UFF4MOF_atom_parameters[add_symbol + '6+4']
+										ty = add_symbol + '6+4'
+									except KeyError:
+										UFF4MOF_atom_parameters[add_symbol + '4+2']
+										ty = add_symbol + '4+2'
+
+					# special case for 8c_Co_2
+					elif len(nbors) in (5,6) and not any(i in metals for i in nbor_symbols) and (dist_tetrahedral < dist_square) and (element_symbol in ('Co')):
+						ty = add_symbol + '6+2'
 
 					# 7 and 8c metals
-					elif len(nbors) in (7,8) and element_symbol in ('Cd', 'Eu', 'Tb', 'Zr'):
-						ty = element_symbol + '8f4'
+					elif len(nbors) in (7,8) and element_symbol in ('Cd', 'Eu', 'Tb', 'Zr', 'In'):
+						ty = add_symbol + '8f4'
+
+					elif len(nbors) > 8 and element_symbol in ('Ce'):
+						ty = add_symbol + '8f4'
 
 					else:
 						raise ValueError('No UFF4MOF type identified for ' + element_symbol + ' with neighbors ' + ' '.join(nbor_symbols))
@@ -447,6 +471,8 @@ class UFF4MOF(force_field):
 			fft_i = SG.node[i]['force_field_type']
 			fft_j = SG.node[j]['force_field_type']
 			bond_type = data['bond_type']
+			esi = SG.node[i]['element_symbol']
+			esj = SG.node[j]['element_symbol']
 
 			# look for the bond order, otherwise use the convention based on the bond type
 			try:
@@ -455,7 +481,10 @@ class UFF4MOF(force_field):
 				try:
 					bond_order = bond_order_dict[(fft_j,fft_i)]
 				except KeyError:
-					bond_order = bond_order_dict[bond_type]
+					if esi in metals or esj in metals:
+						bond_order = 0.5
+					else:
+						bond_order = bond_order_dict[bond_type]
 
 			bond = tuple(sorted([fft_i, fft_j]) + [bond_order])
 

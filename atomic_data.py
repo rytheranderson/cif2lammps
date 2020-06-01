@@ -1,5 +1,13 @@
-metals = set(['Al', 'Ti', 'V' , 'Cr', 'Mn', 'Fe', 'Eu', 'Tb', 'Ag',  
-              'Co', 'Ni', 'Cu', 'Zn', 'Zr', 'Sc'])
+metals = set(['Ac','Ag','Al','Am','Au','Ba','Be','Bi',
+			  'Bk','Ca','Cd','Ce','Cf','Cm','Co','Cr',
+			  'Cs','Cu','Dy','Er','Es','Eu','Fe','Fm',
+			  'Fr','Ga','Gd','Hf','Hg','Ho','In','Ir',
+			  'K','La','Li','Lr','Lu','Md','Mg','Mn',
+			  'Mo','Na','Nb','Nd','Ni','No','Np','Os',
+			  'Pa','Pb','Pd','Pm','Pr','Pt','Pu','Ra',
+			  'Rb','Re','Rh','Ru','Sc','Sm','Sn','Sr',
+			  'Ta','Tb','Tc','Th','Ti','Tl','Tm','U',
+			  'V','W','Y','Yb','Zn','Zr'])
 
 mass_key = {
 "NA": 0.0001,
