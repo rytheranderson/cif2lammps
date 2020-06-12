@@ -290,3 +290,25 @@ UFF4MOF_bond_orders_0 = {
 	'D': 2.00,
 	'T': 3.00
 }
+
+	
+#import re
+#def nn(string):
+#	return re.sub('[^a-zA-Z]','', string)
+#def nf(string):
+#	return re.sub('[f]','', string)
+#
+#radii = []
+#for ty in UFF4MOF_atom_parameters:
+#	params = UFF4MOF_atom_parameters[ty]
+#	vdw_radius = (params[2] * (2**(-1.0/6.0)))/2.0
+#	symbol = nn(ty)
+#	if len(symbol) > 2:
+#		symbol = symbol[0:2]
+#	radii.append((symbol, vdw_radius))
+#
+#radii = set(radii)
+#
+#for l in sorted(radii):
+#	print('{:4} {:5.3f}'.format(l[0], l[1]))
+

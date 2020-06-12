@@ -91,19 +91,19 @@ def add_small_molecules(FF, ff_string):
 	nbonds = max([i for i in FF.bond_data['params']])
 	nangles = max([i for i in FF.angle_data['params']])
 	
-	#try:
-	#	ndihedrals = max([i for i in FF.dihedral_data['params']])
-	#except AttributeError:
-	#	ndihedrals = 0
-	#try:
-	#	nimpropers = max([i for i in FF.improper_data['params']])
-	#except AttributeError:
-	#	nimpropers = 0
+	try:
+		ndihedrals = max([i for i in FF.dihedral_data['params']])
+	except AttributeError:
+		ndihedrals = 0
+	try:
+		nimpropers = max([i for i in FF.improper_data['params']])
+	except AttributeError:
+		nimpropers = 0
 
-	#new_bond_types = {}
-	#new_angle_types = {}
-	#new_dihedral_types = {}
-	#new_improper_types = {}
+	new_bond_types = {}
+	new_angle_types = {}
+	new_dihedral_types = {}
+	new_improper_types = {}
 
 	for subG, ID_string in zip([SMG.subgraph(c).copy() for c in nx.connected_components(SMG)], comps):
 
@@ -176,9 +176,6 @@ def add_small_molecules(FF, ff_string):
 					FF.bond_data['count'] = (FF.bond_data['count'][0] + 1, FF.bond_data['count'][1] + 1)
 					FF.bond_data['all_bonds'][ty] = [(e0,e1)]
 
-				#print(FF.bond_data['count'])
-				#print(e0,e1,ty,nbonds)
-
 			except KeyError:
 				pass
 				
@@ -231,7 +228,6 @@ def add_small_molecules(FF, ff_string):
 				except KeyError:
 					pass
 
-		# add new angles
 		# add new dihedrals
 
 	FF.bond_data['count'] = (FF.bond_data['count'][0], len(FF.bond_data['params']))

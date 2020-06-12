@@ -37,7 +37,7 @@ def isfloat(value):
 
 def lammps_inputs(args):
 
-	cifname, force_field, ff_string, sm_ff_string, outdir, charges, replication = args
+	cifname, force_field, ff_string, sm_ff_string, outdir, charges, replication, read_cif_pymatgen = args
 
 	# add more forcefields here as they are created
 	if ff_string == 'UFF4MOF':
@@ -57,8 +57,10 @@ def lammps_inputs(args):
 		cutoff = 12.50
 		mixing_rules='shift yes mix arithmetic'
 
-	system = initialize_system(cifname, charges=charges)
+
+	system = initialize_system(cifname, charges=charges, read_pymatgen=read_cif_pymatgen)
 	system, replication = replication_determination(system, replication, cutoff)
+
 	FF = force_field(system, cutoff, FF_args)
 	FF.compile_force_field(charges=charges)
 

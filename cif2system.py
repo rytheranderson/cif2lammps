@@ -147,9 +147,14 @@ def cif_read(filename, charges=False):
 	
 	return elems, names, ccoords, fcoords, charge_list, bonds, (a,b,c,alpha,beta,gamma), unit_cell
 
-def initialize_system(filename, charges=False, small_molecule_cutoff=5):
+def initialize_system(filename, charges=False, small_molecule_cutoff=10, read_pymatgen=False):
 
-	elems, names, ccoords, fcoords, charge_list, bonds, uc_params, unit_cell = cif_read(filename, charges=charges)
+	if not read_pymatgen:
+		elems, names, ccoords, fcoords, charge_list, bonds, uc_params, unit_cell = cif_read(filename, charges=charges)
+	else:
+		from pymatgen_cif2system import cif_read_pymatgen
+		elems, names, ccoords, fcoords, charge_list, bonds, uc_params, unit_cell = cif_read_pymatgen(filename, charges=charges)
+		
 	A,B,C,alpha,beta,gamma = uc_params
 
 	G = nx.Graph()

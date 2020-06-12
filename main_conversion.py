@@ -19,7 +19,7 @@ from zeoliteFFs_construction import MZHB
 
 force_fields = ['UFF4MOF']
 
-def serial_conversion(directory, force_field=UFF4MOF, ff_string='UFF4MOF', small_molecule_force_field=None, outdir='unopt_lammps_data', charges=False, parallel=False, replication='1x1x1'):
+def serial_conversion(directory, force_field=UFF4MOF, ff_string='UFF4MOF', small_molecule_force_field=None, outdir='unopt_lammps_data', charges=False, parallel=False, replication='1x1x1', read_cifs_pymatgen=False):
 
 	try:
 		os.mkdir(outdir)
@@ -31,11 +31,11 @@ def serial_conversion(directory, force_field=UFF4MOF, ff_string='UFF4MOF', small
 	cifs = sorted(glob.glob(directory + os.sep + '*.cif'))
 	for cif in cifs:
 		print('converting ', cif, '...')
-		lammps_inputs([cif, force_field, ff_string, small_molecule_force_field, outdir, charges, replication])
+		lammps_inputs([cif, force_field, ff_string, small_molecule_force_field, outdir, charges, replication, read_cifs_pymatgen])
 
 	print('--- cifs in', directory, 'converted and placed in', outdir, '---')
 
-def parallel_conversion(directory, force_field=UFF4MOF, ff_string='UFF4MOF', small_molecule_force_field=None, outdir='unopt_lammps_data', charges=False, parallel=True, replication='1x1x1'):
+def parallel_conversion(directory, force_field=UFF4MOF, ff_string='UFF4MOF', small_molecule_force_field=None, outdir='unopt_lammps_data', charges=False, parallel=True, replication='1x1x1', read_cifs_pymatgen=False):
 
 	try:
 		os.mkdir(outdir)
@@ -45,7 +45,7 @@ def parallel_conversion(directory, force_field=UFF4MOF, ff_string='UFF4MOF', sma
 	print('conversion running on ' + str(multiprocessing.cpu_count()) + ' cores')
 
 	cifs = sorted(glob.glob(directory + os.sep + '*.cif'))
-	args = [[cif, force_field, ff_string, small_molecule_force_field, outdir, charges, replication] for cif in cifs]
+	args = [[cif, force_field, ff_string, small_molecule_force_field, outdir, charges, replication, read_cifs_pymatgen] for cif in cifs]
 	pool = Pool(multiprocessing.cpu_count())
 	results_par = pool.map_async(lammps_inputs, args) 
 	pool.close()
@@ -82,6 +82,7 @@ def run_conversion():
 	parser.add_argument('--replication', action='store', dest='replication', type=str, required=False, default='1x1x1', help='replications to use')
 	parser.add_argument('--GULP', action='store_true', dest='GULP', required=False, default=False, help='write GULP inputs instead of LAMMPS')
 	parser.add_argument('--parallel', action='store_true', dest='parallel', required=False, default=False, help='switch on parallel conversion')
+	parser.add_argument('--read_cifs_pymatgen', action='store_true', dest='read_cifs_pymatgen', required=False, default=False, help='use ASE to read CIF inputs')
 
 	args = parser.parse_args()
 	print(args)
@@ -90,7 +91,7 @@ def run_conversion():
 	force_field = ff_dict[args.ff_string]
 
 	optional_arguments = {'force_field':force_field, 'ff_string':args.ff_string, 'small_molecule_force_field':args.sm_ff_string, 
-						  'outdir':args.outdir, 'charges':args.charges, 'replication':args.replication}
+						  'outdir':args.outdir, 'charges':args.charges, 'replication':args.replication, 'read_cifs_pymatgen':args.read_cifs_pymatgen}
 
 		
 	if args.GULP:
