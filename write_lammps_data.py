@@ -37,7 +37,7 @@ def isfloat(value):
 
 def lammps_inputs(args):
 
-	cifname, force_field, ff_string, sm_ff_string, outdir, charges, replication, read_cif_pymatgen = args
+	cifname, force_field, ff_string, sm_ff_string, outdir, charges, replication = args
 
 	# add more forcefields here as they are created
 	if ff_string == 'UFF4MOF':
@@ -57,10 +57,8 @@ def lammps_inputs(args):
 		cutoff = 12.50
 		mixing_rules='shift yes mix arithmetic'
 
-
-	system = initialize_system(cifname, charges=charges, read_pymatgen=read_cif_pymatgen)
+	system = initialize_system(cifname, charges=charges)
 	system, replication = replication_determination(system, replication, cutoff)
-
 	FF = force_field(system, cutoff, FF_args)
 	FF.compile_force_field(charges=charges)
 
@@ -289,21 +287,23 @@ def lammps_inputs(args):
 		data.write('\n')
 		data.write('Atoms\n')
 		data.write('\n')
+		total_charge = 0.0
 
 		for a in SG.nodes(data=True):
 			atom_data = a[1]
 			index = a[0]
 			force_field_type = atom_data['force_field_type']
 			lammps_type = FF.atom_types[force_field_type]
-			if charges:
-				charge = atom_data['charge']
-			else:
-				charge = 0.0
+			charge = atom_data['charge']
+			total_charge += charge
 			pos = [np.round(v,8) for v in atom_data['cartesian_position']]
 
 			data.write('{:>5} {:<5} {:<5} {:8.5f} {:12.5f} {:12.5f} {:12.5f}'.format(index, atom_data['mol_flag'], lammps_type, charge, pos[0], pos[1], pos[2]))
 			data.write('\n')
 
+		if charges and abs(total_charge) > 0.001:
+			warnings.warn('There is a potentially significant net charge of', total_charge)
+			
 		data.write('\n')
 		data.write('Bonds\n')
 		data.write('\n')

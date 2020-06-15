@@ -159,7 +159,10 @@ class UFF4MOF(force_field):
 						hyb = 'sp' + str(len(nbors) + 1)
 				# Group 9
 				elif element_symbol in ('F', 'Cl', 'Br') and len(nbor_symbols) == 1:
-					ty = element_symbol + '_'
+					if len(element_symbol) == 1:
+						ty = element_symbol + '_'
+					else:
+						ty = element_symbol
 					hyb = 'sp1'
 				elif element_symbol == 'Cl' and len(nbor_symbols) == 4:
 					ty = 'Cl_f'

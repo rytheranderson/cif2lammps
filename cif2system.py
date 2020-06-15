@@ -7,6 +7,8 @@ import itertools
 import datetime
 import atomic_data
 import functools
+from random import choice
+import warnings
 
 metals = atomic_data.metals
 mass_key = atomic_data.mass_key
@@ -112,11 +114,7 @@ def cif_read(filename, charges=False):
 					fvec[dim] -= 1.0
 
 			fcoords.append(fvec)
-
-			if charges:
-				charge_list.append(float(s[-1]))
-			else:
-				charge_list.append(0.0)
+			charge_list.append(float(s[-1]))
 
 		if isbond(s):
 			bonds.append((s[0],s[1],s[3],s[4],s[2]))
@@ -143,18 +141,21 @@ def cif_read(filename, charges=False):
 
 	fcoords = np.asarray(fcoords)
 	ccoords = np.asarray(ccoords)
-	charges = np.asarray(charges)
+	charge_list = np.asarray(charge_list)
+	net_charge = abs(np.round(np.sum(charge_list),3))
+	print(net_charge)
+
+	if net_charge > 0.1 and charges:
+		warnings.warn('A potentially significant net charge of ' + str(net_charge) + ' is being removed')
+
+	remove_net = choice(range(len(charge_list)))
+	charge_list[remove_net] -= net_charge
 	
 	return elems, names, ccoords, fcoords, charge_list, bonds, (a,b,c,alpha,beta,gamma), unit_cell
 
-def initialize_system(filename, charges=False, small_molecule_cutoff=10, read_pymatgen=False):
+def initialize_system(filename, charges=False, small_molecule_cutoff=5):
 
-	if not read_pymatgen:
-		elems, names, ccoords, fcoords, charge_list, bonds, uc_params, unit_cell = cif_read(filename, charges=charges)
-	else:
-		from pymatgen_cif2system import cif_read_pymatgen
-		elems, names, ccoords, fcoords, charge_list, bonds, uc_params, unit_cell = cif_read_pymatgen(filename, charges=charges)
-		
+	elems, names, ccoords, fcoords, charge_list, bonds, uc_params, unit_cell = cif_read(filename, charges=charges)
 	A,B,C,alpha,beta,gamma = uc_params
 
 	G = nx.Graph()

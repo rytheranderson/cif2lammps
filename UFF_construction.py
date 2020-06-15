@@ -95,7 +95,10 @@ class UFF(force_field):
 						hyb = 'sp' + str(len(nbors) + 1)
 				# Group 9
 				elif element_symbol in ('F', 'Br'):
-					ty = element_symbol + '_'
+					if len(element_symbol) == 1:
+						ty = element_symbol + '_'
+					else:
+						ty = element_symbol
 					hyb = 'sp1'
 				# Metals
 				elif element_symbol in metals:
