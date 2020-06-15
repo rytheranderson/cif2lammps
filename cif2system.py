@@ -142,15 +142,14 @@ def cif_read(filename, charges=False):
 	fcoords = np.asarray(fcoords)
 	ccoords = np.asarray(ccoords)
 	charge_list = np.asarray(charge_list)
-	net_charge = abs(np.round(np.sum(charge_list),3))
-	print(net_charge)
-
+	net_charge = np.round(np.sum(charge_list),3)
+	
 	if net_charge > 0.1 and charges:
 		warnings.warn('A potentially significant net charge of ' + str(net_charge) + ' is being removed')
 
 	remove_net = choice(range(len(charge_list)))
 	charge_list[remove_net] -= net_charge
-	
+
 	return elems, names, ccoords, fcoords, charge_list, bonds, (a,b,c,alpha,beta,gamma), unit_cell
 
 def initialize_system(filename, charges=False, small_molecule_cutoff=5):
