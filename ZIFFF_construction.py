@@ -18,6 +18,15 @@ class ZIFFF(force_field):
 
 		SG = self.system['graph']
 		types = []
+		imidazole_ring_atoms = []
+
+		for atom,data in SG.nodes(data=True):
+
+			element_symbol = data['element_symbol']
+
+			if element_symbol in ('Zn','Cd'):
+				nborhood = nx.ego_graph(G,atom,radius=2)
+				print(nborhood)
 
 		# assign Zn, N, and C types
 		for atom in SG.nodes(data=True):
