@@ -15,6 +15,7 @@ from UFF4MOF_construction import UFF4MOF
 from UFF_construction import UFF
 from Dreiding_construction import Dreiding
 from zeoliteFFs_construction import MZHB
+from ZIFFF_construction import ZIFFF
 # add more force field classes here as they are made
 
 force_fields = ['UFF4MOF']
@@ -87,13 +88,12 @@ def run_conversion():
 	args = parser.parse_args()
 	print(args)
 
-	ff_dict = {'UFF4MOF':UFF4MOF, 'UFF':UFF, 'Dreiding':Dreiding, 'MZHB':MZHB}
+	ff_dict = {'UFF4MOF':UFF4MOF, 'UFF':UFF, 'Dreiding':Dreiding, 'MZHB':MZHB, 'ZIFFF':ZIFFF}
 	force_field = ff_dict[args.ff_string]
 
 	optional_arguments = {'force_field':force_field, 'ff_string':args.ff_string, 'small_molecule_force_field':args.sm_ff_string, 
 						  'outdir':args.outdir, 'charges':args.charges, 'replication':args.replication, 'read_cifs_pymatgen':args.read_cifs_pymatgen}
 
-		
 	if args.GULP:
 		print('converting to GULP format...')
 		parallel_GULP_conversion(args.directory, **optional_arguments)

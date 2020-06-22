@@ -93,11 +93,11 @@ def add_small_molecules(FF, ff_string):
 	
 	try:
 		ndihedrals = max([i for i in FF.dihedral_data['params']])
-	except AttributeError:
+	except ValueError:
 		ndihedrals = 0
 	try:
 		nimpropers = max([i for i in FF.improper_data['params']])
-	except AttributeError:
+	except ValueError:
 		nimpropers = 0
 
 	new_bond_types = {}

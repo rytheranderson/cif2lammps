@@ -94,9 +94,18 @@ class UFF4MOF(force_field):
 						ty = element_symbol + str(len(nbors) - 1)
 						hyb = 'sp' + str(len(nbors) - 1)
 				# Group 7
-				elif element_symbol in ('N'):
-					ty = element_symbol + '_' + str(len(nbors))
-					hyb = 'sp' + str(len(nbors))
+				elif element_symbol in ('N', 'P'):
+					if element_symbol == 'N':
+						if len(nbors) < 4:
+							ty = element_symbol + '_' + str(len(nbors))
+							hyb = 'sp' + str(len(nbors))
+						else:
+							ty = 'N_2'
+					else:
+						if dist_square < dist_tetrahedral:
+							ty = 'P_3+3'
+						else:
+							ty = 'P_3+5'
 				# Group 8
 				elif element_symbol in ('O', 'S'):
 					
@@ -146,7 +155,6 @@ class UFF4MOF(force_field):
 	
 						# 4 connected oxygens bonded to metals
 						elif len(nbors) == 4:
-							
 							ty = 'O_3_f'
 							hyb = 'sp3'
 
@@ -155,10 +163,24 @@ class UFF4MOF(force_field):
 							raise ValueError('Oxygen with neighbors ' + ' '.join(nbor_symbols) + ' is not parametrized')
 					# sulfur case is simple
 					elif element_symbol == 'S':
-						ty = 'S_' + str(len(nbors) + 1)
-						hyb = 'sp' + str(len(nbors) + 1)
+
+						if len(nbors) == 2:
+							ty = 'S_' + str(len(nbors) + 1)
+							hyb = 'sp' + str(len(nbors) + 1)
+
+						elif len(nbors) == 3:
+							ty = 'S_2'
+							hyb = 'sp2'
+
+						elif len(nbors) > 3 and any(i in metals for i in nbor_symbols):
+							ty = 'S_3_f'
+							hyb = 'sp3'
+
+						elif len(nbors) > 3 and not any(i in metals for i in nbor_symbols):
+							ty = 'S_3+6'
+							hyb = 'sp3'
 				# Group 9
-				elif element_symbol in ('F', 'Cl', 'Br') and len(nbor_symbols) == 1:
+				elif element_symbol in ('F', 'Cl', 'Br') and len(nbor_symbols) in (1,2):
 					if len(element_symbol) == 1:
 						ty = element_symbol + '_'
 					else:
@@ -180,8 +202,15 @@ class UFF4MOF(force_field):
 						add_symbol = element_symbol
 
 					# 2 connected, linear
-					if len(nbors) == 2 and dist_linear < 10.0:
+					if len(nbors) == 2 and dist_linear < 20.0:
 						add_symbol + '1f1'
+
+					elif len(nbors) == 3 and dist_square < dist_triangle:
+						try:
+							UFF4MOF_atom_parameters[add_symbol + '4f2']
+							ty = add_symbol + '4f2'
+						except KeyError:
+							ty = add_symbol + '4+2'
 
 					# 4 connected, square planar or tetrahedral
 					elif len(nbors) == 4:
@@ -191,7 +220,25 @@ class UFF4MOF(force_field):
 								UFF4MOF_atom_parameters[add_symbol + '4f2']
 								ty = add_symbol + '4f2'
 							except KeyError:
-								ty = add_symbol + '4+2'
+								try:
+									UFF4MOF_atom_parameters[add_symbol + '4+2']
+									ty = add_symbol + '4+2'
+								except KeyError:
+									try:
+										UFF4MOF_atom_parameters[add_symbol + '6f3']
+										ty = add_symbol + '6f3'
+									except KeyError:
+										try:
+											UFF4MOF_atom_parameters[add_symbol + '6+3']
+											ty = add_symbol + '6+3'
+										except KeyError:
+											try:
+												UFF4MOF_atom_parameters[add_symbol + '6+2']
+												ty = add_symbol + '6+2'
+											except KeyError:
+												UFF4MOF_atom_parameters[add_symbol + '6+4']
+												ty = add_symbol + '6+4'
+
 						else:
 							try:
 								UFF4MOF_atom_parameters[add_symbol + '3f2']
@@ -225,19 +272,40 @@ class UFF4MOF(force_field):
 										UFF4MOF_atom_parameters[add_symbol + '6+4']
 										ty = add_symbol + '6+4'
 									except KeyError:
-										UFF4MOF_atom_parameters[add_symbol + '4+2']
-										ty = add_symbol + '4+2'
+										try:
+											UFF4MOF_atom_parameters[add_symbol + '4f2']
+											ty = add_symbol + '4f2'
+										except KeyError:
+											UFF4MOF_atom_parameters[add_symbol + '4+2']
+											ty = add_symbol + '4+2'
 
-					# special case for 8c_Co_2
-					elif len(nbors) in (5,6) and not any(i in metals for i in nbor_symbols) and (dist_tetrahedral < dist_square) and (element_symbol in ('Co')):
-						ty = add_symbol + '6+2'
+					elif len(nbors) in (5,6) and not any(i in metals for i in nbor_symbols) and (dist_tetrahedral < dist_square):
+						UFF4MOF_atom_parameters[add_symbol + '8f4']
+						ty = add_symbol + '8f4'
+
+					elif len(nbors) in (5,6) and any(i in metals for i in nbor_symbols) and (dist_square < dist_tetrahedral):
+						try:
+							UFF4MOF_atom_parameters[add_symbol + '4f2']
+							ty = add_symbol + '4f2'
+						except KeyError:
+							UFF4MOF_atom_parameters[add_symbol + '4+2']
+							ty = add_symbol + '4+2'
 
 					# 7 and 8c metals
-					elif len(nbors) in (7,8) and element_symbol in ('Cd', 'Eu', 'Tb', 'Zr', 'In'):
-						ty = add_symbol + '8f4'
+					elif len(nbors) >= 7:
+						try:
+							UFF4MOF_atom_parameters[add_symbol + '8f4']
+							ty = add_symbol + '8f4'
+						except KeyError:
+							try:
+								UFF4MOF_atom_parameters[add_symbol + '3f2']
+								ty = add_symbol + '3f2'
+							except KeyError:
+								UFF4MOF_atom_parameters[add_symbol + '3+2']
+								ty = add_symbol + '3+2'
 
-					elif len(nbors) > 8 and element_symbol in ('Ce'):
-						ty = add_symbol + '8f4'
+					elif element_symbol == 'Bi':
+						ty = 'Bi3+3'
 
 					else:
 						raise ValueError('No UFF4MOF type identified for ' + element_symbol + ' with neighbors ' + ' '.join(nbor_symbols))

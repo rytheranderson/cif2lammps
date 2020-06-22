@@ -328,9 +328,9 @@ class ZIFFF(force_field):
 	
 			return (angle_style, K, b, n)
 
-	def dihedral_parameters(self, bond, hybridization, element_symbols, nodes):
+	def dihedral_parameters(self, dihedral, hybridization, element_symbols, nodes):
 
-		fft_j, fft_k, bond_order = bond
+		i, j, k, l, bond_order = dihedral
 		hyb_j, hyb_k = hybridization
 		els_j, els_k = element_symbols
 		node_j, node_k = nodes 
@@ -345,64 +345,7 @@ class ZIFFF(force_field):
 		if mult == 0.0:
 			return 'NA'
 
-		if hyb_j == 'sp3' and hyb_k == 'sp3':
-			# case (a)
-			phi0 = 60.0
-			n = 3.0
-			V_j = UFF4MOF_atom_parameters[fft_j][6]
-			V_k = UFF4MOF_atom_parameters[fft_k][6]
-			V = np.sqrt(V_j*V_k)
-			# case (h)
-			if els_j == 'O' and els_k == 'O':
-				phi0 = 90.0
-				n = 2.0
-				V = 2.0
-			elif els_j == 'S' and els_k == 'S':
-				phi0 = 90.0
-				n = 2.0
-				V = 6.8
 
-		elif (hyb_j in ('sp2', 'resonant') and hyb_k == 'sp3') or (hyb_k in ('sp2', 'resonant') and hyb_j == 'sp3'):
-			# case (b)
-			phi0 = 180.0
-			n = 6.0
-			V = 2.0
-			# case (i) 
-			if hyb_j == 'sp3' and els_j in ('O','S'):
-				phi0 = 180.0
-				n = 2.0
-				U_j = UFF4MOF_atom_parameters[fft_j][6]
-				U_k = UFF4MOF_atom_parameters[fft_k][6]
-				V = 5 * np.sqrt(U_j*U_k) * (1.0 + 4.18 * np.log(bond_order))
-			elif hyb_k == 'sp3' and els_k in ('O','S'):
-				phi0 = 180.0
-				n = 2.0
-				U_j = UFF4MOF_atom_parameters[fft_j][6]
-				U_k = UFF4MOF_atom_parameters[fft_k][6]
-				V = 5 * np.sqrt(U_j*U_k) * (1.0 + 4.18 * np.log(bond_order))
-			# case (j) not needed for the current ToBaCCo MOFs
-
-		# case (c, d, e, f)
-		elif hyb_j in ('sp2', 'resonant') and hyb_k in ('sp2', 'resonant'):
-			phi0 = 180.0
-			n = 2.0
-			U_j = UFF4MOF_atom_parameters[fft_j][6]
-			U_k = UFF4MOF_atom_parameters[fft_k][6]
-			V = 5 * np.sqrt(U_j*U_k) * (1.0 + 4.18 * np.log(bond_order))
-
-		# case (g)
-		elif hyb_j == 'sp1' or hyb_k == 'sp1':
-			return 'NA'
-
-		elif hyb_j == 'NA' or hyb_k == 'NA':
-			return 'NA'
-		
-		# divide by multiplicity and halve to match UFF paper
-		V /= mult
-		V *= 0.5
-		d = -1.0 * np.cos(math.radians(n*phi0))
-
-		return ('harmonic', V, int(d), int(n))
 
 	def improper_parameters(self, fft_i, O_2_flag):
 		

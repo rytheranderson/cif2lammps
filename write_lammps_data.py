@@ -56,6 +56,10 @@ def lammps_inputs(args):
 		FF_args = {'FF_parameters':None, 'bond_orders':None}
 		cutoff = 12.50
 		mixing_rules='shift yes mix arithmetic'
+	elif ff_string == 'ZIFFF':
+		FF_args = {'FF_parameters':UFF4MOF_atom_parameters, 'bond_orders':UFF4MOF_atom_parameters}
+		cutoff = 12.50
+		mixing_rules='shift yes mix arithmetic'
 
 	system = initialize_system(cifname, charges=charges, read_pymatgen=read_pymatgen)
 
