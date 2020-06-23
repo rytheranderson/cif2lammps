@@ -164,7 +164,7 @@ class UFF4MOF(force_field):
 								ty = 'O_2_z'
 								hyb = 'sp2'
 							# tetrahedral-like geometry
-							else:
+							elif dist_tetrahedral < dist_triangle:
 								ty = 'O_3_f'
 								hyb = 'sp3'
 						# 4 connected oxygens bonded to metals
@@ -219,8 +219,16 @@ class UFF4MOF(force_field):
 						add_symbol + '1f1'
 
 					# 3 connected, but with 90/180 degree angles
-					elif len(nbors) == 3 and dist_square < dist_triangle:
+					elif len(nbors) == 3 and dist_square < min(dist_tetrahedral, dist_triangle):
 						options = ('4f2', '4+2')
+						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
+
+					elif len(nbors) == 3 and dist_tetrahedral < min(dist_square, dist_triangle):
+						options = ('3f2', '3+2')
+						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
+
+					elif len(nbors) == 3 and dist_triangle < min(dist_square, dist_tetrahedral):
+						options = ('2f2', '3+3')
 						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
 
 					# 4 connected, square planar
