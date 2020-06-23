@@ -76,10 +76,8 @@ def cif_read_pymatgen(filename, charges=False):
 
 	if any(i in elements for i in ('Zn')):
 		skin = 0.30
-	if any(i in elements for i in ('Eu','Er','Tb')):
+	if any(i in elements for i in ('Eu','Er','Tb','Gd')):
 		skin = 0.05
-	if any(i in elements for i in ('Gd')):
-		skin = 0.10
 	else:
 		skin = 0.20
 
@@ -186,9 +184,10 @@ def cif_read_pymatgen(filename, charges=False):
 
 		isym = data['element_symbol']
 		total_bond_order = np.sum([G[i][n]['bond_order'] for n in G.neighbors(i)])
+		nbor_symbols = ' '.join([G.nodes[n]['element_symbol'] for n in G.neighbors(i)])
 		
 		if isym not in metals and total_bond_order != valencies[isym]:
-			message = ' '.join([str(isym), 'has total bond order', str(total_bond_order)])
+			message = ' '.join([str(isym), 'has total bond order', str(total_bond_order), 'with neighbors', nbor_symbols])
 			warnings.warn(message)
 
 	elems = atoms.get_chemical_symbols()
