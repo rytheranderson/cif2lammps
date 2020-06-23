@@ -225,12 +225,12 @@ class UFF4MOF(force_field):
 
 					# 4 connected, square planar
 					elif len(nbors) == 4 and dist_square < dist_tetrahedral:
-						options = ('4f2','4+2','6f3','6+3','6+2','6+4')
+						options = ('4f2', '4+2', '6f3', '6+3', '6+2', '6+4')
 						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
 
 					# 4 connected, tetrahedral
 					elif len(nbors) == 4 and dist_tetrahedral < dist_square:
-						options = ('3f2', '3+2')
+						options = ('3f2', '3+2', '3')
 						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
 
 					# paddlewheels, 5 neighbors if bare, 6 neighbors if pillared, one should be another metal
@@ -254,8 +254,16 @@ class UFF4MOF(force_field):
 						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
 
 					# only one type for Bi
+					elif element_symbol == 'At':
+						ty = 'At'
 					elif element_symbol == 'Bi':
 						ty = 'Bi3+3'
+					elif element_symbol == 'Cs':
+						ty = 'Cs'
+					elif element_symbol == 'Fr':
+						ty = 'Fr'
+					elif element_symbol == 'Rb':
+						ty = 'Rb'
 
 					else:
 						raise ValueError('No UFF4MOF type identified for metal ' + element_symbol + ' with neighbors ' + ' '.join(nbor_symbols))
