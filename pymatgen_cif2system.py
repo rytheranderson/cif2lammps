@@ -3,15 +3,38 @@ import networkx as nx
 import numpy as np
 from itertools import chain
 import warnings
-
 from ase import neighborlist
 from ase.geometry import get_distances
-
 from pymatgen.io.cif import CifParser
 from pymatgen.io.ase import AseAtomsAdaptor
 from pymatgen.core import bonds
-
+from numpy import cross, eye
+from numpy.linalg import norm, inv
+from scipy.linalg import expm
 from atomic_data import metals
+from cif2system import PBC3DF_sym
+
+def R(axis, theta):
+	"""
+		returns a rotation matrix that rotates a vector around axis by angle theta
+	"""
+	return expm(cross(eye(3), axis/norm(axis)*theta))
+
+def M(vec1, vec2):
+	"""
+		returns a rotation matrix that rotates vec1 onto vec2
+	"""
+	ax = np.cross(vec1, vec2)
+	
+	if np.any(ax): # need to check that the rotation axis has non-zero components
+	   
+		ax_norm = ax/norm(np.cross(vec1, vec2))
+		cos_ang = np.dot(vec1, vec2)/(norm(vec1) * norm(vec2))
+		ang = np.arccos(cos_ang)
+		return R(ax_norm, ang)
+
+	else:
+		return eye(3)
 
 PT = ['H' , 'He', 'Li', 'Be', 'B' , 'C' , 'N' , 'O' , 'F' , 'Ne', 'Na', 'Mg', 'Al', 'Si', 'P' , 'S' , 'Cl', 'Ar',
 	  'K' , 'Ca', 'Sc', 'Ti', 'V' , 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr',
@@ -37,7 +60,7 @@ def read_cif(self):
 
 	return struct, ase_atoms
 
-def cif_read_pymatgen(filename, charges=False):
+def cif_read_pymatgen(filename, charges=False, coplanarity_tolerance=0.1):
 
 	valencies = {'C':4.0,'Si':4.0,'Ge':4.0,'N':3.0,
 				 'P':3.0,'As':3.0,'Sb':3.0,'O':2.0,
@@ -72,11 +95,14 @@ def cif_read_pymatgen(filename, charges=False):
 	struct = cif.get_structures(primitive=False)[0]
 	atoms = AseAtomsAdaptor.get_atoms(struct)
 	unit_cell = atoms.get_cell()
+	inv_uc = inv(unit_cell.T)
 	elements = atoms.get_chemical_symbols()
+	small_skin_metals = ('Ce','Pr','Nd','Pm','Sm','Eu','Gd','Tb','Dy','Ho','Er','Tm','Yb','Lu',
+						 'Ba','La')
 
 	if any(i in elements for i in ('Zn')):
 		skin = 0.30
-	if any(i in elements for i in ('Eu','Er','Tb','Gd')):
+	if any(i in elements for i in small_skin_metals):
 		skin = 0.05
 	else:
 		skin = 0.20
@@ -92,7 +118,7 @@ def cif_read_pymatgen(filename, charges=False):
 	
 	G = nx.Graph()
 	for a in atoms:
-		G.add_node(a.index, element_symbol=a.symbol)
+		G.add_node(a.index, element_symbol=a.symbol, position=a.position)
 	
 	for i in atoms:
 		
@@ -114,7 +140,7 @@ def cif_read_pymatgen(filename, charges=False):
 			bond_length = get_distances(i.position, p2=atoms[j].position, cell=unit_cell, pbc=[True,True,True])
 			bond_length = np.round(bond_length[1][0][0], 3)
 
-			G.add_edge(i.index, j, bond_length=bond_length, bond_order=bond_order, bond_type='')
+			G.add_edge(i.index, j, bond_length=bond_length, bond_order=bond_order, bond_type='', pymatgen_bond_order=bond_order)
 
 	NMG = G.copy()
 	edge_list = list(NMG.edges())
@@ -127,8 +153,21 @@ def cif_read_pymatgen(filename, charges=False):
 		if sym0 in metals or sym1 in metals:
 			NMG.remove_edge(e0,e1)
 
-	linkers = nx.connected_components(NMG)
+	for i,data in G.nodes(data=True):
 
+		isym = data['element_symbol']
+		nbors = list(G.neighbors(i))
+		nbor_symbols = [G.nodes[n]['element_symbol'] for n in nbors]
+		nonmetal_nbor_symbols = [n for n in nbor_symbols if n not in metals]
+
+		# remove C-M bonds if C is also bonded to carboxylate atoms, these are almost always wrong
+		for n, nsym in zip(nbors, nbor_symbols):
+			if isym == 'C' and sorted(nonmetal_nbor_symbols) == ['C', 'O', 'O'] and nsym in metals:
+				G.remove_edge(i,n)
+
+	### intial bond typing, guessed from rounding pymatgen bond orders
+	linkers = nx.connected_components(NMG)
+	aromatic_atoms = []
 	for linker in linkers:
 		
 		SG = NMG.subgraph(linker)
@@ -138,10 +177,11 @@ def cif_read_pymatgen(filename, charges=False):
 			isym = data['element_symbol']
 			nbors = list(G.neighbors(i))
 			nbor_symbols = [G.nodes[n]['element_symbol'] for n in nbors]
+			nonmetal_nbor_symbols = [n for n in nbor_symbols if n not in metals]
 			CB = nx.cycle_basis(SG)
+			
 			check_cycles = True
-
-			if len(CB) < 1:
+			if len(CB) < 3:
 				check_cycles = False
 			
 			cyloc = None
@@ -158,9 +198,15 @@ def cif_read_pymatgen(filename, charges=False):
 
 				if bond_order < 1.0 and bond_order != 0.5:
 					bond_order = 1.0
-				elif 1.0 < bond_order < 2.0:
+				# shortest observed single bond had order 1.321
+				elif 1.00 <= bond_order < 1.33:
+					bond_order = 1.0
+				elif 1.33 <= bond_order < 1.75:
 					bond_order = 1.5
-				elif 2.0 < bond_order < 3.0:
+				# bond orders tend to be on the high end for aromatic compounds
+				elif 1.75 <= bond_order < 2.00:
+					bond_order = 1.5
+				elif 2.00 <= bond_order < 3.00:
 					bond_order = round(bond_order)
 				
 				# bonds between two disparate cycles or cycles and non-cycles should have order 1.0
@@ -174,20 +220,63 @@ def cif_read_pymatgen(filename, charges=False):
 				if nsym in metals:
 					bond_order = 0.5
 
+				if isym == 'C' and len(nbor_symbols) == 4:
+					bond_order = 1.0
+
+				if isym == 'C' and sorted(nbor_symbols) == ['C', 'O', 'O']:
+					if nsym == 'C':
+						bond_order = 1.0
+					elif nsym == 'O':
+						bond_order = 1.5
+					else:
+						pass
+
 				edge_data['bond_order'] = bond_order
 				bond_orders.append(bond_order)
 				edge_data['bond_type'] = bond_types[bond_order]
 
-			total_bond_order = np.sum(bond_orders)
+			all_cycles = nx.simple_cycles(nx.to_directed(SG))
+			all_cycles = set([tuple(sorted(cy)) for cy in all_cycles if len(cy) > 4])
+
+		### assign aromatic bond orders as 1.5 (in most cases they will be already)
+		for cycle in all_cycles:
+
+			# rotate the ring normal vec onto the z-axis to determine coplanarity
+			coords = np.array([G.nodes[c]['position'] for c in cycle])
+			fcoords = np.dot(inv_uc, coords.T).T
+			anchor = fcoords[0]
+			fcoords = np.array([vec - PBC3DF_sym(anchor, vec)[1] for vec in fcoords])
+			coords = np.dot(unit_cell.T, fcoords.T).T
+
+			coords -= np.average(coords, axis=0)
+			
+			vec0 = coords[0]
+			vec1 = coords[1]
+			
+			normal = np.cross(vec0,vec1)
+			RZ = M(normal, np.array([0.0,0.0,1.0]))
+			coords = np.dot(RZ, coords.T).T
+			maxZ = max([abs(z) for z in coords[:,-1]])
+
+			# if coplanar make all bond orders 1.5
+			if maxZ < coplanarity_tolerance:
+
+				aromatic_atoms.extend(list(cycle))
+				cycle_subgraph = SG.subgraph(cycle)
+				
+				for e0,e1 in cycle_subgraph.edges():
+					G[e0][e1]['bond_order'] = 1.5
 
 	for i,data in G.nodes(data=True):
 
 		isym = data['element_symbol']
-		total_bond_order = np.sum([G[i][n]['bond_order'] for n in G.neighbors(i)])
+		bond_orders = [G[i][n]['bond_order'] for n in G.neighbors(i)]
+		total_bond_order = np.sum(bond_orders)
+		bond_orders = [str(o) for o in bond_orders]
 		nbor_symbols = ' '.join([G.nodes[n]['element_symbol'] for n in G.neighbors(i)])
 		
 		if isym not in metals and total_bond_order != valencies[isym]:
-			message = ' '.join([str(isym), 'has total bond order', str(total_bond_order), 'with neighbors', nbor_symbols])
+			message = ' '.join([str(isym), 'has total bond order', str(total_bond_order), 'with neighbors', nbor_symbols, 'and bond orders'] + bond_orders)
 			warnings.warn(message)
 
 	elems = atoms.get_chemical_symbols()

@@ -93,6 +93,7 @@ class UFF4MOF(force_field):
 				dist_linear = min(np.abs(angles - 180.0))
 				dist_triangle = min(np.abs(angles - 120.0))
 				dist_square = min(min(np.abs(angles - 90.0)), min(np.abs(angles - 180.0)))
+				dist_corner = min(np.abs(angles - 90.0))
 				dist_tetrahedral = min(np.abs(angles - 109.47))
 
 			ty = None
@@ -194,15 +195,18 @@ class UFF4MOF(force_field):
 							hyb = 'sp3'
 				# Group 9
 				elif element_symbol in ('F', 'Cl', 'Br') and len(nbor_symbols) in (1,2):
-					if len(element_symbol) == 1:
-						ty = element_symbol + '_'
+					if element_symbol != 'Cl':
+						if len(element_symbol) == 1:
+							ty = element_symbol + '_'
+						else:
+							ty = element_symbol
+						hyb = 'sp1'
+					# some Cl have 90 degree angles in CoRE MOFs
 					else:
-						ty = element_symbol
-					hyb = 'sp1'
-				# special case for Cl bonded 4 sites in square planar geometry
-				elif element_symbol == 'Cl' and len(nbor_symbols) == 4:
-					ty = 'Cl_f'
-					hyb = 'sp1'
+						if dist_corner < dist_linear:
+							ty = 'Cl_f'
+						elif dist_linear < dist_corner:
+							ty = 'Cl'
 				# metals
 				elif element_symbol in metals:
 
@@ -216,7 +220,8 @@ class UFF4MOF(force_field):
 
 					# 2 connected, linear
 					if len(nbors) == 2 and dist_linear < 20.0:
-						add_symbol + '1f1'
+						options = ('1f1', '4f2', '4+2', '6f3', '6+3', '6+2', '6+4')
+						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
 
 					# 3 connected, but with 90/180 degree angles
 					elif len(nbors) == 3 and dist_square < min(dist_tetrahedral, dist_triangle):
@@ -243,7 +248,7 @@ class UFF4MOF(force_field):
 
 					# paddlewheels, 5 neighbors if bare, 6 neighbors if pillared, one should be another metal
 					elif len(nbors) in (5,6) and any(i in metals for i in nbor_symbols) and (dist_square < dist_tetrahedral):
-						options = ('4f2', '4+2')
+						options = ('4f2', '4+2', '6f3', '6+3', '6+2', '6+4')
 						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
 
 					# M3O(CO2H)6 metals, e.g. MIL-100, paddlewheel options are last (should give nearly correct geometry)
@@ -253,8 +258,8 @@ class UFF4MOF(force_field):
 
 					# metals with 5 or 6 neighbors but non-90/180 angles
 					elif len(nbors) in (5,6) and not any(i in metals for i in nbor_symbols) and (dist_tetrahedral < dist_square):
-						UFF4MOF_atom_parameters[add_symbol + '8f4']
-						ty = add_symbol + '8f4'
+						options = ('8f4', '6f3', '6+3', '6+2', '6+4')
+						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
 
 					# highly connected metals (max of 12 neighbors)
 					elif 7 <= len(nbors) <= 12:
