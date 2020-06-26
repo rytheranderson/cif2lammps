@@ -318,10 +318,13 @@ def duplicate_system(system, replications, small_molecule_cutoff=10):
 			fvec = np.array([c/d for c,d in zip(fvec, replications)])
 			translated_fvec = np.array([c/d for c,d in zip(translated_fvec, replications)])
 			NG.node[node]['fractional_position'] = fvec
-			cvec = np.dot(unit_cell, translated_fvec)
 			
 			equivalency[original_atom].append(new_index)
-			NG.add_node(new_index, element_symbol=element_symbol, mol_flag=1, index=new_index, force_field_type='', cartesian_position=cvec, fractional_position=translated_fvec, charge=charge, duplicated_version_of=original_atom)
+			NG.add_node(new_index, element_symbol=element_symbol, mol_flag=1, index=new_index, force_field_type='', cartesian_position=np.array([0.0,0.0,0.0]), fractional_position=translated_fvec, charge=charge, duplicated_version_of=original_atom)
+
+	for node,data in NG.nodes(data=True):
+
+		data['cartesian_position'] = np.dot(unit_cell, data['fractional_position'])
 
 	for n0, n1, edge_data in G.edges(data=True):
 		
@@ -614,7 +617,7 @@ def write_cif_from_system(system, filename):
 			ind = es + str(data['index'])
 			index_dict[n] = ind
 			chg = data['charge']
-			out.write('{:7} {:>4} {:>15} {:>15} {:>15} {:>15}'.format(ind, es, vec[0], vec[1], vec[2], chg))
+			out.write('{:7} {:>4} {:>15.6f} {:>15.6f} {:>15.6f} {:>15.6f}'.format(ind, es, vec[0], vec[1], vec[2], chg))
 			out.write('\n')
 
 		out.write('loop_' + '\n')

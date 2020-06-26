@@ -1,5 +1,5 @@
 from __future__ import print_function
-from cif2system import initialize_system, replication_determination
+from cif2system import initialize_system, replication_determination, write_cif_from_system
 from small_molecule_construction import add_small_molecules
 import atomic_data
 import os
@@ -7,6 +7,8 @@ import numpy as np
 import datetime
 import math
 import warnings
+from ase import Atoms, Atom
+from ase.io import write
 
 import UFF4MOF_constants
 import UFF_constants
@@ -62,7 +64,6 @@ def lammps_inputs(args):
 		mixing_rules='shift yes mix arithmetic'
 
 	system = initialize_system(cifname, charges=charges, read_pymatgen=read_pymatgen)
-
 	system, replication = replication_determination(system, replication, cutoff)
 	FF = force_field(system, cutoff, FF_args)
 	FF.compile_force_field(charges=charges)
@@ -97,11 +98,21 @@ def lammps_inputs(args):
 	xy = np.round(b * np.cos(math.radians(gamma)), 8)
 	xz = np.round(c * np.cos(math.radians(beta)), 8)
 	ly = np.round(np.sqrt(b**2 - xy**2), 8)
-	yz = np.round((b * c*np.cos(math.radians(alpha)) - xy*xz)/ly, 8)
+	yz = np.round((b*c*np.cos(math.radians(alpha)) - xy*xz)/ly, 8)
 	lz = np.round(np.sqrt(c**2 - xz**2 - yz**2), 8)
 
 	suffix = cifname.split('/')[-1].split('.')[0] + '_' + replication
 	data_name = 'data.' + suffix
+
+	#with open('check.xyz', 'w') as out:
+	#	out.write(str(len(SG.nodes())))
+	#	out.write('\n')
+	#	out.write('\n')
+	#	for atom, atom_data in SG.nodes(data=True):
+	#		pos = [np.round(v,8) for v in atom_data['cartesian_position']]
+	#		line = [atom_data['element_symbol']] + pos
+	#		out.write('{} {} {} {}'.format(*line))
+	#		out.write('\n')
 
 	with open(outdir + os.sep + data_name, 'w') as data:
 		data.write(first_line + '\n')

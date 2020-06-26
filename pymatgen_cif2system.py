@@ -130,8 +130,11 @@ def cif_read_pymatgen(filename, charges=False, coplanarity_tolerance=0.1):
 			jsym = atoms[j].symbol
 
 			if (isym not in metals) and (jsym not in metals) and not any(e == 'X' for e in [isym, jsym]):
-				bond = bonds.CovalentBond(struct[i.index], struct[j])
-				bond_order = bond.get_bond_order()
+				try:
+					bond = bonds.CovalentBond(struct[i.index], struct[j])
+					bond_order = bond.get_bond_order()
+				except ValueError:
+					bond_order = 1.0
 			elif (isym == 'X' or jsym == 'X') and (isym not in metals) and (jsym not in metals):
 				bond_order = 1.0
 			else:
