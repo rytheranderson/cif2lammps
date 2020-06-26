@@ -1,13 +1,72 @@
 from __future__ import print_function
 import numpy as np
+from numpy.linalg import norm
 import math
 import itertools
+from itertools import permutations
 import atomic_data
 from force_field_construction import force_field
 from cif2system import PBC3DF_sym
+from superimposition import SVDSuperimposer
 
 metals = atomic_data.metals
 mass_key = atomic_data.mass_key
+
+comparison_geometries = {
+
+	'square_planar' : np.array([[ 1.0, 0.0, 0.0],
+								[-1.0, 0.0, 0.0],
+								[ 0.0, 1.0, 0.0],
+								[ 0.0,-1.0, 0.0]]),
+
+	'tetrahedral' : np.array([[ 1.0, 1.0, 0.0],
+							  [ 1.0, 0.0, 1.0],
+							  [ 0.0, 1.0, 1.0],
+							  [ 0.0, 0.0, 0.0]])
+}
+
+
+def superimpose(a0, a1, count, max_permute=6):
+	
+	S = SVDSuperimposer()
+
+	a0 = np.asarray(a0)
+	a1 = np.asarray(a1)
+
+	a0 -= np.average(a0, axis=0)
+	a1 -= np.average(a1, axis=0)
+
+	a0 = np.array([vec/norm(vec) if np.any(vec) else vec for vec in a0])
+	a1 = np.array([vec/norm(vec) if np.any(vec) else vec for vec in a1])
+
+	min_msd = (100.0, 'foo', 'bar')
+	looper = list(permutations(a0))[0:max_permute]
+
+	for l in looper:
+		
+		p = np.asarray(l)
+		S.set(a1,p)
+		S.run()
+		msd = S.get_rms()
+
+		if msd < min_msd[0]:
+			rot,tran = S.get_rotran()
+			min_msd = (msd, rot, tran)
+
+	#aff_a0 = np.dot(p, min_msd[1]) + min_msd[2]
+	#with open('check' + str(count) + '.xyz', 'w') as out:
+	#	out.write(str(2*len(aff_a0)))
+	#	out.write('\n\n')
+	#	for coord in aff_a0:
+	#		line = ['X'] + list(coord)
+	#		out.write('{} {} {} {}'.format(*line))
+	#		out.write('\n')
+	#	for coord in a1:
+	#		line = ['H'] + list(coord)
+	#		out.write('{} {} {} {}'.format(*line))
+	#		out.write('\n')
+
+	return min_msd[0]
 
 def typing_loop(options, add, atom_type_dict):
 
@@ -56,6 +115,7 @@ class UFF4MOF(force_field):
 		UFF4MOF_atom_parameters = self.args['FF_parameters']
 		SG = self.system['graph']
 		types = []
+		count = 0
 
 		for atom in SG.nodes(data=True):
 			
@@ -68,35 +128,51 @@ class UFF4MOF(force_field):
 
 			if len(nbors) > 1:
 
-				angles = []
+				# 4 connected metals require shape matching
+				if (element_symbol in metals and len(nbors) == 4):
 
-				for n0,n1 in itertools.combinations(nbors, 2):
-
-					dist_j, sym_j = PBC3DF_sym(SG.node[n0]['fractional_position'], inf['fractional_position'])
-					dist_k, sym_k = PBC3DF_sym(SG.node[n1]['fractional_position'], inf['fractional_position'])
-						
-					dist_j = np.dot(self.unit_cell, dist_j)
-					dist_k = np.dot(self.unit_cell, dist_k)
+					count += 1
 					
-					cosine_angle = np.dot(dist_j, dist_k) / (np.linalg.norm(dist_j) * np.linalg.norm(dist_k))
+					comp_coords = []
+					for n in nbors:
+	
+						dist_n, sym_n = PBC3DF_sym(SG.node[n]['fractional_position'], inf['fractional_position'])
+						dist_n = np.dot(self.unit_cell, dist_n)
+						fcoord = SG.node[n]['fractional_position'] + sym_n
+						comp_coords.append(np.dot(self.unit_cell, fcoord))
+	
+					comp_coords = np.array(comp_coords)
+					dist_square = superimpose(comp_coords, comparison_geometries['square_planar'], count)
+					dist_tetrahedral = superimpose(comp_coords, comparison_geometries['tetrahedral'], count)
 
-					if cosine_angle > 1:
-						cosine_angle = 1
-					elif cosine_angle < -1:
-						cosine_angle = -1
-
-					ang = (180.0/np.pi) * np.arccos(cosine_angle)
-
-					angles.append(ang)
-
-				angles = np.array(angles)
-				dist_linear = min(np.abs(angles - 180.0))
-				dist_triangle = min(np.abs(angles - 120.0))
-				dist_square = min(min(np.abs(angles - 90.0)), min(np.abs(angles - 180.0)))
-				dist_corner = min(np.abs(angles - 90.0))
-				dist_tetrahedral = min(np.abs(angles - 109.47))
-
-			ty = None
+				else:
+					
+					angles = []
+					for n0,n1 in itertools.combinations(nbors, 2):
+					
+						dist_j, sym_j = PBC3DF_sym(SG.node[n0]['fractional_position'], inf['fractional_position'])
+						dist_k, sym_k = PBC3DF_sym(SG.node[n1]['fractional_position'], inf['fractional_position'])
+							
+						dist_j = np.dot(self.unit_cell, dist_j)
+						dist_k = np.dot(self.unit_cell, dist_k)
+						
+						cosine_angle = np.dot(dist_j, dist_k) / (np.linalg.norm(dist_j) * np.linalg.norm(dist_k))
+					
+						if cosine_angle > 1:
+							cosine_angle = 1
+						elif cosine_angle < -1:
+							cosine_angle = -1
+					
+						ang = (180.0/np.pi) * np.arccos(cosine_angle)
+					
+						angles.append(ang)
+					
+					angles = np.array(angles)
+					dist_linear = min(np.abs(angles - 180.0))
+					dist_triangle = min(np.abs(angles - 120.0))
+					dist_square = min(min(np.abs(angles - 90.0)), min(np.abs(angles - 180.0)))
+					dist_corner = min(np.abs(angles - 90.0))
+					dist_tetrahedral = min(np.abs(angles - 109.47))
 
 			if 'A' in bond_types and element_symbol != 'O':
 				ty = element_symbol + '_' + 'R'
@@ -223,17 +299,19 @@ class UFF4MOF(force_field):
 						options = ('1f1', '4f2', '4+2', '6f3', '6+3', '6+2', '6+4')
 						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
 
-					# 3 connected, but with 90/180 degree angles
+					# incomplete square planar
 					elif len(nbors) == 3 and dist_square < min(dist_tetrahedral, dist_triangle):
 						options = ('4f2', '4+2')
 						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
 
+					# incomplete tetrahedron
 					elif len(nbors) == 3 and dist_tetrahedral < min(dist_square, dist_triangle):
 						options = ('3f2', '3+2')
 						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
 
+					# trigonal, only Cu, Zn, Ag
 					elif len(nbors) == 3 and dist_triangle < min(dist_square, dist_tetrahedral):
-						options = ('2f2', '3+3')
+						options = ('2f2')
 						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
 
 					# 4 connected, square planar
@@ -254,11 +332,6 @@ class UFF4MOF(force_field):
 					# M3O(CO2H)6 metals, e.g. MIL-100, paddlewheel options are last (should give nearly correct geometry)
 					elif len(nbors) in (5,6) and not any(i in metals for i in nbor_symbols) and (dist_square < dist_tetrahedral):
 						options = ('6f3', '6+3', '6+2', '6+4', '4f2', '4+2')
-						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
-
-					# metals with 5 or 6 neighbors but non-90/180 angles
-					elif len(nbors) in (5,6) and not any(i in metals for i in nbor_symbols) and (dist_tetrahedral < dist_square):
-						options = ('8f4', '6f3', '6+3', '6+2', '6+4')
 						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
 
 					# highly connected metals (max of 12 neighbors)
