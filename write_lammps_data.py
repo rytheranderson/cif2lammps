@@ -65,6 +65,7 @@ def lammps_inputs(args):
 
 	system = initialize_system(cifname, charges=charges, read_pymatgen=read_pymatgen)
 	system, replication = replication_determination(system, replication, cutoff)
+
 	FF = force_field(system, cutoff, FF_args)
 	FF.compile_force_field(charges=charges)
 

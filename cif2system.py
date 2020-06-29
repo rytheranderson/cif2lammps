@@ -357,7 +357,7 @@ def duplicate_system(system, replications, small_molecule_cutoff=10):
 				dist_n0n1,sym_n0n1 = PBC3DF_sym(fvec_n0, fvec_n1)
 				dist_n0n1 = np.linalg.norm(np.dot(unit_cell, dist_n0n1))
 				
-				if abs(dist_e0e1 - length) < 0.05:
+				if abs(dist_e0e1 - length) < 0.075:
 					
 					if np.any(sym_e0e1):
 						sym_code = '1_' + ''.join(map(str, map(int, sym_e0e1 + 5)))
@@ -366,7 +366,7 @@ def duplicate_system(system, replications, small_molecule_cutoff=10):
 						
 					NG.add_edge(eq0, eq1, sym_code=sym_code, bond_type=bond_type, length=dist_e0e1)
 					
-				if abs(dist_n0e1 - length) < 0.05:
+				if abs(dist_n0e1 - length) < 0.075:
 					
 					if np.any(sym_n0e1):
 						sym_code = '1_' + ''.join(map(str, map(int, sym_n0e1 + 5)))
@@ -375,7 +375,7 @@ def duplicate_system(system, replications, small_molecule_cutoff=10):
 					
 					NG.add_edge(n0, eq1, sym_code=sym_code, bond_type=bond_type, length=dist_n0e1)
 
-				if abs(dist_e0n1 - length) < 0.05:
+				if abs(dist_e0n1 - length) < 0.075:
 					
 					if np.any(sym_e0n1):
 						sym_code = '1_' + ''.join(map(str, map(int, sym_e0n1 + 5)))
@@ -384,7 +384,7 @@ def duplicate_system(system, replications, small_molecule_cutoff=10):
 
 					NG.add_edge(eq0, n1, sym_code=sym_code, bond_type=bond_type, length=dist_n0e1)
 					
-				if abs(dist_n0n1 - length) > 0.05:
+				if abs(dist_n0n1 - length) > 0.075:
 					if (n0,n1) not in edge_remove_list:
 						edge_remove_list.append((n0, n1))
 
