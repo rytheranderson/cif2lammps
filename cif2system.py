@@ -183,6 +183,7 @@ def initialize_system(filename, charges=False, small_molecule_cutoff=10, read_py
 
 		G.add_edge(index_key[b[0]], index_key[b[1]], sym_code=sym_code, bond_type=b[3], length=float(b[-1]))
 
+	print_flag = False
 	for e in G.edges(data=True):
 
 		e0,e1,data = e
@@ -195,11 +196,14 @@ def initialize_system(filename, charges=False, small_molecule_cutoff=10, read_py
 		bond_type = data['bond_type']
 
 		if es0 == 'O' and es1 == 'C' and any(i in metals for i in nbors0_symbols) and bond_type != 'A':
-			print('correcting carboxyllic bond type to aromatic for', filename)
+			print_flag = True
 			data['bond_type'] = 'A'
 		if es1 == 'O' and es0 == 'C' and any(i in metals for i in nbors1_symbols) and bond_type != 'A':
-			print('correcting carboxyllic bond type to aromatic for', filename)
+			print_flag = True
 			data['bond_type'] = 'A'
+
+	if print_flag:
+		print('correcting carboxyllic bond type to aromatic for', filename)
 
 	components = []
 	SGS = [G.subgraph(c).copy() for c in nx.connected_components(G)]

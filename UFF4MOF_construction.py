@@ -248,9 +248,7 @@ class UFF4MOF(force_field):
 						elif len(nbors) == 4:
 							ty = 'O_3_f'
 							hyb = 'sp3'
-						# error if no type is identified
-						else:
-							raise ValueError('Oxygen with neighbors ' + ' '.join(nbor_symbols) + ' is not parametrized')
+
 					# sulfur case is simple
 					elif element_symbol == 'S':
 						# -SH like patterns
@@ -284,7 +282,7 @@ class UFF4MOF(force_field):
 						elif dist_linear < dist_corner:
 							ty = 'Cl'
 				# metals
-				elif element_symbol in metals:
+				elif element_symbol in metals and element_symbol not in ('As', 'Sb', 'Tl', 'Bi'):
 
 					hyb = 'NA'
 
@@ -311,7 +309,7 @@ class UFF4MOF(force_field):
 
 					# trigonal, only Cu, Zn, Ag
 					elif len(nbors) == 3 and dist_triangle < min(dist_square, dist_tetrahedral):
-						options = ('2f2')
+						options = ['2f2']
 						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
 
 					# 4 connected, square planar
@@ -319,9 +317,9 @@ class UFF4MOF(force_field):
 						options = ('4f2', '4+2', '6f3', '6+3', '6+2', '6+4')
 						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
 
-					# 4 connected, tetrahedral
-					elif len(nbors) == 4 and dist_tetrahedral < dist_square:
-						options = ('3f2', '3+2', '3')
+					# 4 connected, tetrahedral 3+3 does not apply for As, Sb, Tl, Bi
+					elif len(nbors) == 4 and (dist_tetrahedral < dist_square):
+						options = ('3f2', '3f4', '3+1', '3+2', '3+3', '3+4', '3+5', '3+6')
 						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
 
 					# paddlewheels, 5 neighbors if bare, 6 neighbors if pillared, one should be another metal
@@ -329,38 +327,39 @@ class UFF4MOF(force_field):
 						options = ('4f2', '4+2', '6f3', '6+3', '6+2', '6+4')
 						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
 
-					# M3O(CO2H)6 metals, e.g. MIL-100, paddlewheel options are last (should give nearly correct geometry)
+					# M3O(CO2H)6 metals, e.g. MIL-100, paddlewheel options are secondary, followed by 8f4 (should give nearly correct geometry)
 					elif len(nbors) in (5,6) and not any(i in metals for i in nbor_symbols) and (dist_square < dist_tetrahedral):
-						options = ('6f3', '6+3', '6+2', '6+4', '4f2', '4+2')
+						options = ('6f3', '6+2', '6+3', '6+4', '4f2', '4+2')
+						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
+
+					# 5,6 connected, with near-tetrahedral angles
+					elif len(nbors) in (5,6) and not any(i in metals for i in nbor_symbols) and (dist_tetrahedral < dist_square):
+						options = ('8f4', '3f2', '3f4', '3+1', '3+2', '3+3', '3+4', '3+5', '3+6')
 						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
 
 					# highly connected metals (max of 12 neighbors)
 					elif 7 <= len(nbors) <= 12:
-						options = ('8f4', '3f2', '3+2')
+						options = ['8f4']
 						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
 
-					# only one type for Bi
-					elif element_symbol == 'At':
-						ty = 'At'
-					elif element_symbol == 'Bi':
-						ty = 'Bi3+3'
-					elif element_symbol == 'Cs':
-						ty = 'Cs'
-					elif element_symbol == 'Fr':
-						ty = 'Fr'
-					elif element_symbol == 'Rb':
-						ty = 'Rb'
-
-					else:
-						raise ValueError('No UFF4MOF type identified for metal ' + element_symbol + ' with neighbors ' + ' '.join(nbor_symbols))
-
-				# if no type can be identified
-				else:
-					raise ValueError('No UFF4MOF type identified for atom ' + element_symbol + ' with neighbors ' + ' '.join(nbor_symbols))
+				# only one type for Bi
+				elif element_symbol in ('As', 'Bi', 'Tl', 'Sb'):
+					ty = element_symbol + '3+3'
+				elif element_symbol == 'At':
+					ty = 'At'
+				elif element_symbol == 'Cs':
+					ty = 'Cs'
+				elif element_symbol == 'Fr':
+					ty = 'Fr'
+				elif element_symbol == 'Rb':
+					ty = 'Rb'
 			
 			types.append((ty, element_symbol, mass))
 			SG.node[name]['force_field_type'] = ty
 			SG.node[name]['hybridization'] = hyb
+
+			if ty == None:
+				raise ValueError('No UFF4MOF type identified for atom ' + element_symbol + ' with neighbors ' + ' '.join(nbor_symbols))
 
 		types = set(types)
 		Ntypes = len(types)
