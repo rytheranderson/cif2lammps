@@ -225,13 +225,33 @@ def initialize_system(filename, charges=False, small_molecule_cutoff=10, read_py
 	print('there are', len(components), 'components in the system with (#atoms, formula unit):')
 	SM = nx.Graph()
 	framework = nx.Graph()
+	
 	for component in components:
+		
 		print('{:<6} {}'.format(component[0], component[1]))
 		S = component[2]
+		
 		if len(S.nodes()) > small_molecule_cutoff:
 			framework = nx.compose(framework, S)
+		
 		if len(S.nodes()) < small_molecule_cutoff:
-			SM = nx.compose(SM, S)
+
+			node_elems = [(n,data['element_symbol']) for n,data in S.nodes(data=True)]
+			sort_elems = sorted(node_elems, key=lambda x: x[1], reverse=True)
+			sort_index = sorted(node_elems, key=lambda x: x[0], reverse=False)
+			sort_key = dict((i[0],j[0]) for i,j in zip(sort_index, sort_elems))
+			add_graph = nx.Graph()
+
+			for node,elem in sort_elems:
+
+				data = G.nodes[node]
+				add_graph.add_node(sort_key[node], **data)
+
+			for e0,e1,data in S.edges(data=True):
+
+				add_graph.add_edge(sort_key[e0], sort_key[e1], **data)
+
+			SM = nx.compose(SM, add_graph)
 
 	index = 0
 	frame_remap = {}

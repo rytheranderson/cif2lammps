@@ -13,7 +13,7 @@ TraPPE =  {
 		'dihedrals': None,
 		'impropers': None
 	},
-	'H2O': {
+	'H2O1': {
 		'pair': {},
 		'bonds': {},
 		'angles': {},
@@ -23,10 +23,10 @@ TraPPE =  {
 }
 
 TIP4P =  {
-	'H2O': {
-		'pair': {'style': 'lj/cut/coul/long', 'vdW': {'H': (0.0,0.0), 'O': (0.16275,3.16435), 'X':(0.0,0.0)}, 'charges': {'H': 0.5242, 'O': 0.0, 'X': -1.0484}},
-		'bonds': {('O','H'): ('zero',None,None), ('O','X'): ('zero',None,None)},
-		'angles': {('H','O','H'): ('zero',None,None), ('H','O','X'): ('zero',None,None)},
+	'H2O1': {
+		'pair': {'style': 'lj/cut/tip4p/long', 'vdW': {'H_w': (0.0,0.0), 'O_w': (0.16275,3.16435)}, 'charges': {'H_w': 0.5242, 'O_w': 0.0}},
+		'bonds': {('H_w','O_w'): ('harmonic', 100.0, 0.9572)},
+		'angles': {('H_w','O_w','H_w'): ('harmonic', 100.0, 104.52)},
 		'dihedrals': None,
 		'impropers': None
 	}

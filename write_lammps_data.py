@@ -174,6 +174,7 @@ def lammps_inputs(args):
 		data.write('\n')
 
 		for bty in FF.bond_data['params']:
+			
 			params = FF.bond_data['params'][bty]
 			params = [np.round(x,6) if isfloat(x) else x for x in params]
 			comment = FF.bond_data['comments'][bty]
@@ -307,6 +308,7 @@ def lammps_inputs(args):
 		total_charge = 0.0
 
 		for a in SG.nodes(data=True):
+			
 			atom_data = a[1]
 			index = a[0]
 			force_field_type = atom_data['force_field_type']
@@ -319,7 +321,7 @@ def lammps_inputs(args):
 			data.write('\n')
 
 		if charges and abs(total_charge) > 0.001:
-			warnings.warn('There is a potentially significant net charge of', total_charge)
+			warnings.warn('There is a potentially significant net charge of ' + str(total_charge))
 			
 		data.write('\n')
 		data.write('Bonds\n')

@@ -11,6 +11,8 @@ def add_small_molecules(FF, ff_string):
 	
 	if ff_string == 'TraPPE':
 		SM_constants = small_molecule_constants.TraPPE
+	if ff_string == 'TIP4P':
+		SM_constants = small_molecule_constants.TIP4P
 	# insert more force fields here if needed
 	else:
 		raise ValueError('the small molecule force field', ff_string, 'is not defined')
@@ -39,17 +41,26 @@ def add_small_molecules(FF, ff_string):
 	add_nodes = []
 	add_edges = []
 	comps = []
+
 	for comp in nx.connected_components(SMG):
 
 		mol_flag += 1
-		comp = list(comp)
+		comp = sorted(list(comp))
 		ID_string = sorted([SMG.node[n]['element_symbol'] for n in comp])
 		ID_string = [(key, len(list(group))) for key, group in groupby(ID_string)]
 		ID_string = ''.join([str(e) for c in ID_string for e in c])
 		comps.append(ID_string)
 
 		for n in comp:
-			SMG.node[n]['force_field_type'] = SMG.node[n]['element_symbol'] + '_' + ID_string
+
+			data = SMG.node[n]
+
+			SMG.node[n]['mol_flag'] = str(mol_flag)
+
+			if ID_string == 'H2O1':
+				SMG.node[n]['force_field_type'] = SMG.node[n]['element_symbol'] + '_w' 
+			else:
+				SMG.node[n]['force_field_type'] = SMG.node[n]['element_symbol'] + '_' + ID_string
 
 		# add COM sites where relevant, extend this list as new types are added
 		if ID_string in ('O2', 'N2'):
@@ -110,7 +121,7 @@ def add_small_molecules(FF, ff_string):
 		constants = SM_constants[ID_string]
 
 		# add new atom types
-		for name,data in subG.nodes(data=True):
+		for name,data in sorted(subG.nodes(data=True), key=lambda x:x[0]):
 
 			fft = data['force_field_type']
 			chg = constants['pair']['charges'][fft]
