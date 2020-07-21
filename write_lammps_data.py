@@ -59,7 +59,7 @@ def lammps_inputs(args):
 		cutoff = 12.50
 		mixing_rules='shift yes mix arithmetic'
 	elif ff_string == 'ZIFFF':
-		FF_args = {'FF_parameters':UFF4MOF_atom_parameters, 'bond_orders':UFF4MOF_atom_parameters}
+		FF_args = {'FF_parameters':'gaff2', 'bond_orders':None}
 		cutoff = 12.50
 		mixing_rules='shift yes mix arithmetic'
 
@@ -147,6 +147,7 @@ def lammps_inputs(args):
 		data.write('\n')
 
 		for aty in FF.pair_data['params']:
+
 			params = FF.pair_data['params'][aty]
 			params = [np.round(x,6) if isfloat(x) else x for x in params]
 			comment = FF.pair_data['comments'][aty]
