@@ -102,21 +102,35 @@ def cif_read(filename, charges=False):
 		if '_cell_angle_gamma' in line:
 			gamma = s[1]
 		if iscoord(s):
-			
-			names.append(s[0])
-			elems.append(s[1])
-			
-			fvec = np.array([np.round(float(v),8) for v in s[2:5]])
-			for dim in range(len(fvec)):
-				if fvec[dim] < 0.0:
-					fvec[dim] += 1.0
-				elif fvec[dim] > 1.0:
-					fvec[dim] -= 1.0
 
-			fcoords.append(fvec)
-			charge_list.append(float(s[-1]))
+			if s[1] != 'U':
+			
+				names.append(s[0])
+				elems.append(s[1])
+				
+				fvec = np.array([np.round(float(v),8) for v in s[2:5]])
+				for dim in range(len(fvec)):
+					if fvec[dim] < 0.0:
+						fvec[dim] += 1.0
+					elif fvec[dim] > 1.0:
+						fvec[dim] -= 1.0
+	
+				fcoords.append(fvec)
+				charge_list.append(float(s[-1]))
+				#charge_list.append(float(s[5]))
 
 		if isbond(s):
+
+			### these comments are for a special conversion of MOF membranes with water
+			#if nn(s[0]) == 'U' or nn(s[1]) == 'U':
+			#	continue
+			#elif nn(s[0]) == 'H' and nn(s[1]) == 'H':
+			#	continue
+			#elif nn(s[0]) == 'H' and nn(s[1]) == 'O' and float(s[2]) > 1.0:
+			#	continue
+			#elif nn(s[0]) == 'O' and nn(s[1]) == 'H' and float(s[2]) > 1.0:
+			#	continue
+
 			bonds.append((s[0],s[1],s[3],s[4],s[2]))
 
 	pi = np.pi

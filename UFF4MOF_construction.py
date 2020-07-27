@@ -5,6 +5,7 @@ import math
 import itertools
 from itertools import permutations
 import atomic_data
+import warnings
 from force_field_construction import force_field
 from cif2system import PBC3DF_sym
 from superimposition import SVDSuperimposer
@@ -52,19 +53,6 @@ def superimpose(a0, a1, count, max_permute=6):
 		if msd < min_msd[0]:
 			rot,tran = S.get_rotran()
 			min_msd = (msd, rot, tran)
-
-	#aff_a0 = np.dot(p, min_msd[1]) + min_msd[2]
-	#with open('check' + str(count) + '.xyz', 'w') as out:
-	#	out.write(str(2*len(aff_a0)))
-	#	out.write('\n\n')
-	#	for coord in aff_a0:
-	#		line = ['X'] + list(coord)
-	#		out.write('{} {} {} {}'.format(*line))
-	#		out.write('\n')
-	#	for coord in a1:
-	#		line = ['H'] + list(coord)
-	#		out.write('{} {} {} {}'.format(*line))
-	#		out.write('\n')
 
 	return min_msd[0]
 
@@ -119,6 +107,7 @@ class UFF4MOF(force_field):
 
 		for atom in SG.nodes(data=True):
 			
+			ty = None
 			name, inf = atom
 			element_symbol = inf['element_symbol']
 			nbors = [a for a in SG.neighbors(name)]
@@ -323,9 +312,16 @@ class UFF4MOF(force_field):
 						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
 
 					# paddlewheels, 5 neighbors if bare, 6 neighbors if pillared, one should be another metal
-					elif len(nbors) in (5,6) and any(i in metals for i in nbor_symbols) and (dist_square < dist_tetrahedral):
-						options = ('4f2', '4+2', '6f3', '6+3', '6+2', '6+4')
-						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
+					elif len(nbors) in (5,6) and any(i in metals for i in nbor_symbols):
+						if (dist_square < dist_tetrahedral):
+							options = ('4f2', '4+2', '6f3', '6+3', '6+2', '6+4')
+							ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
+						else:
+							options = ('4f2', '4+2', '6f3', '6+3', '6+2', '6+4')
+							ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
+							message = 'There is a ' + element_symbol + ' that has a near tetrahedral typed as ' + ty + '\n' 
+							message += 'The neighbors are ' + ' '.join(nbor_symbols)
+							warnings.warn(message)
 
 					# M3O(CO2H)6 metals, e.g. MIL-100, paddlewheel options are secondary, followed by 8f4 (should give nearly correct geometry)
 					elif len(nbors) in (5,6) and not any(i in metals for i in nbor_symbols) and (dist_square < dist_tetrahedral):

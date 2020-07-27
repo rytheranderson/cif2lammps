@@ -85,8 +85,7 @@ def cif_read_pymatgen(filename, charges=False, coplanarity_tolerance=0.1):
 		if '_loop' in s:
 			charge_switch = False
 
-		if len(s) > 4:
-
+		if len(s) > 5:
 			if charges:
 				if charge_switch:
 					charge_list.append(float(s[-1]))
