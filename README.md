@@ -9,8 +9,8 @@ cif2lammps is a Python 2 or 3 program used to convert crystals (developed initia
 ## Current Status
 cif2lammps can be used to convert ToBaCCo (https://github.com/tobacco-mofs/tobacco_3.0) generated and most other cifs to LAMMPS data. Currently the generic force fields UFF, UFF4MOF, and Dreiding are implemented.
 The MZHB (zeolite specific) and ZIF-FF (ZIF specific) force fields are also available. ZIF-FF uses the Generalized Amber Force Field (GAFF) for interactions
-not explicitly parameterized, so there is also preliminary version of GAFF for use with ZIF-FF (which does not include all the atom types seen in GAFF). 
-UFF4MOF has the most robust atom typing functionality, based on connectivity and geometry. More force-fields and the option to use custom force-fields will be added. 
+not explicitly parameterized, so there is also a preliminary version of GAFF for use with ZIF-FF (which does not include all the atom types seen in GAFF). 
+UFF4MOF has the most robust atom typing functionality, based on connectivity and geometry. More force fields and the option to use custom force fields will be added. 
 Keep in mind this is the first version of the code, and I (Ryther) wrote it quite quickly, it is becoming more useful/general, but be aware that it may need to be adapted for specific usage cases. 
 
 ## Usage
