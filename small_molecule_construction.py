@@ -11,7 +11,7 @@ def add_small_molecules(FF, ff_string):
 	
 	if ff_string == 'TraPPE':
 		SM_constants = small_molecule_constants.TraPPE
-	if ff_string == 'TIP4P':
+	elif ff_string == 'TIP4P':
 		SM_constants = small_molecule_constants.TIP4P
 	# insert more force fields here if needed
 	else:
