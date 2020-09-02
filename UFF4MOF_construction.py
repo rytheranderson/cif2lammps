@@ -204,7 +204,7 @@ class UFF4MOF(force_field):
 							ty = 'O_3'
 							hyb = 'sp3'
 						# coordinated solvent, same parameters as O_3, but different name to modulate bond orders
-						elif len(nbors) == 2 and len([i for i in nbor_symbols if i in metals]) == 1 and 'H' in nbor_symbols:
+						elif len(nbors) in (2,3) and len([i for i in nbor_symbols if i in metals]) == 1 and 'H' in nbor_symbols:
 							ty = 'O_3_M'
 							hyb = 'sp3'
 						# furan oxygen, for example
@@ -220,11 +220,11 @@ class UFF4MOF(force_field):
 							ty = 'O_2_M'
 							hyb = 'sp2'
 						# 2 connected oxygens bonded to metals
-						elif len(nbors) == 2 and any(i in metals for i in nbor_symbols):
+						elif len(nbors) == 2 and len([i for i in nbor_symbols if i in metals]) > 1:
 							ty = 'O_3'
 							hyb = 'sp2'
 						# 3 connected oxygens bonded to metals
-						elif len(nbors) == 3 and any(i in metals for i in nbor_symbols):
+						elif len(nbors) == 3 and len([i for i in nbor_symbols if i in metals]) > 1:
 							# trigonal geometry
 							if dist_triangle < dist_tetrahedral:
 								ty = 'O_2_z'
@@ -234,7 +234,7 @@ class UFF4MOF(force_field):
 								ty = 'O_3_f'
 								hyb = 'sp3'
 						# 4 connected oxygens bonded to metals
-						elif len(nbors) == 4:
+						elif len(nbors) == 4 and any(i in metals for i in nbor_symbols):
 							ty = 'O_3_f'
 							hyb = 'sp3'
 
@@ -257,7 +257,7 @@ class UFF4MOF(force_field):
 							ty = 'S_3+6'
 							hyb = 'sp3'
 				# Group 9
-				elif element_symbol in ('F', 'Cl', 'Br') and len(nbor_symbols) in (1,2):
+				elif element_symbol in ('F', 'Cl', 'Br') and len(nbor_symbols) in (1,2,4):
 					if element_symbol != 'Cl':
 						if len(element_symbol) == 1:
 							ty = element_symbol + '_'
@@ -266,12 +266,13 @@ class UFF4MOF(force_field):
 						hyb = 'sp1'
 					# some Cl have 90 degree angles in CoRE MOFs
 					else:
-						if dist_corner < dist_linear:
+						if dist_corner <= dist_linear:
 							ty = 'Cl_f'
 						elif dist_linear < dist_corner:
 							ty = 'Cl'
+
 				# metals
-				elif element_symbol in metals and element_symbol not in ('As', 'Sb', 'Tl', 'Bi'):
+				elif element_symbol in metals and element_symbol not in ('As', 'Bi', 'Tl', 'Sb', 'At', 'Cs', 'Fr', 'Ni', 'Rb'):
 
 					hyb = 'NA'
 
@@ -319,7 +320,7 @@ class UFF4MOF(force_field):
 						else:
 							options = ('4f2', '4+2', '6f3', '6+3', '6+2', '6+4')
 							ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
-							message = 'There is a ' + element_symbol + ' that has a near tetrahedral typed as ' + ty + '\n' 
+							message = 'There is a ' + element_symbol + ' that has a near tetrahedral angle typed as ' + ty + '\n' 
 							message += 'The neighbors are ' + ' '.join(nbor_symbols)
 							warnings.warn(message)
 
@@ -347,6 +348,8 @@ class UFF4MOF(force_field):
 					ty = 'Cs'
 				elif element_symbol == 'Fr':
 					ty = 'Fr'
+				elif element_symbol == 'Ni':
+					ty = 'Ni4+2'
 				elif element_symbol == 'Rb':
 					ty = 'Rb'
 			
