@@ -283,7 +283,7 @@ class UFF4MOF(force_field):
 						add_symbol = element_symbol
 
 					# 2 connected, linear
-					if len(nbors) == 2 and dist_linear < 20.0:
+					if len(nbors) == 2 and dist_linear < 60.0:
 						options = ('1f1', '4f2', '4+2', '6f3', '6+3', '6+2', '6+4')
 						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
 
@@ -443,7 +443,10 @@ class UFF4MOF(force_field):
 			
 			return (angle_style, K, C0, C1, C2)
 
-		# this is needed to correct the LAMMPS angle energy calculation
+		# the 1/2 scaling is needed to correct the LAMMPS angle energy calculation
+		# angle energy for angle_style cosine/periodic is multiplied by 2 in LAMMPS for some reason
+		# see https://github.com/lammps/lammps/blob/master/src/MOLECULE/angle_cosine_periodic.cpp, line 140
+		# the 1/2 factor for the UFF fourier angles should be included here as it is not included in LAMMPS
 		K *= 0.5
 
 		return (angle_style, K, b, n)
