@@ -37,7 +37,7 @@ class MZHB(force_field):
 				raise ValueError('No Nicholas type identified for ' + element_symbol + 'with neighbors ' + ' '.join(nbor_symbols))
 				
 			types.append((ty, element_symbol, mass))
-			SG.node[name]['force_field_type'] = ty
+			SG.nodes[name]['force_field_type'] = ty
 
 		types = set(types)
 		Ntypes = len(types)
@@ -138,8 +138,8 @@ class MZHB(force_field):
 		for e in SG.edges(data=True):
 
 			i,j,data = e
-			fft_i = SG.node[i]['force_field_type']
-			fft_j = SG.node[j]['force_field_type']
+			fft_i = SG.nodes[i]['force_field_type']
+			fft_j = SG.nodes[j]['force_field_type']
 
 			bond = tuple(sorted([fft_i, fft_j]))
 
@@ -182,9 +182,9 @@ class MZHB(force_field):
 				j = name
 				i, k = comb
 
-				fft_i = SG.node[i]['force_field_type']
-				fft_j = SG.node[j]['force_field_type']
-				fft_k = SG.node[k]['force_field_type']
+				fft_i = SG.nodes[i]['force_field_type']
+				fft_j = SG.nodes[j]['force_field_type']
+				fft_k = SG.nodes[k]['force_field_type']
 
 				angle = sorted((fft_i, fft_k))
 				angle = (angle[0], fft_j, angle[1])

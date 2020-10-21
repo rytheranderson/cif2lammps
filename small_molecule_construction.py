@@ -46,31 +46,31 @@ def add_small_molecules(FF, ff_string):
 
 		mol_flag += 1
 		comp = sorted(list(comp))
-		ID_string = sorted([SMG.node[n]['element_symbol'] for n in comp])
+		ID_string = sorted([SMG.nodes[n]['element_symbol'] for n in comp])
 		ID_string = [(key, len(list(group))) for key, group in groupby(ID_string)]
 		ID_string = ''.join([str(e) for c in ID_string for e in c])
 		comps.append(ID_string)
 
 		for n in comp:
 
-			data = SMG.node[n]
+			data = SMG.nodes[n]
 
-			SMG.node[n]['mol_flag'] = str(mol_flag)
+			SMG.nodes[n]['mol_flag'] = str(mol_flag)
 
 			if ID_string == 'H2O1':
-				SMG.node[n]['force_field_type'] = SMG.node[n]['element_symbol'] + '_w' 
+				SMG.nodes[n]['force_field_type'] = SMG.nodes[n]['element_symbol'] + '_w' 
 			else:
-				SMG.node[n]['force_field_type'] = SMG.node[n]['element_symbol'] + '_' + ID_string
+				SMG.nodes[n]['force_field_type'] = SMG.nodes[n]['element_symbol'] + '_' + ID_string
 
 		# add COM sites where relevant, extend this list as new types are added
 		if ID_string in ('O2', 'N2'):
 
 			coords = []
-			anchor = SMG.node[comp[0]]['fractional_position']
+			anchor = SMG.nodes[comp[0]]['fractional_position']
 
 			for n in comp:
 
-				data = SMG.node[n]
+				data = SMG.nodes[n]
 				data['mol_flag'] = str(mol_flag)
 				fcoord = data['fractional_position']
 				mic = PBC3DF_sym(fcoord, anchor)
@@ -155,8 +155,8 @@ def add_small_molecules(FF, ff_string):
 		for e0,e1,data in subG.edges(data=True):
 
 			bonds = constants['bonds']
-			fft_i = SG.node[e0]['force_field_type']
-			fft_j = SG.node[e1]['force_field_type']
+			fft_i = SG.nodes[e0]['force_field_type']
+			fft_j = SG.nodes[e1]['force_field_type']
 			# make sure the order corresponds to that in the molecule dictionary
 			bond = tuple(sorted([fft_i, fft_j]))
 
@@ -202,9 +202,9 @@ def add_small_molecules(FF, ff_string):
 
 				j = name
 				i, k = comb
-				fft_i = subG.node[i]['force_field_type']
-				fft_j = subG.node[j]['force_field_type']
-				fft_k = subG.node[k]['force_field_type']
+				fft_i = subG.nodes[i]['force_field_type']
+				fft_j = subG.nodes[j]['force_field_type']
+				fft_k = subG.nodes[k]['force_field_type']
 
 				angle = sorted((fft_i, fft_k))
 				angle = (angle[0], fft_j, angle[1])

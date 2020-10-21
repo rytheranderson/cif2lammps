@@ -96,8 +96,8 @@ class Dreiding(force_field):
 					raise ValueError('No Dreiding type identified for ' + element_symbol + 'with neighbors ' + ' '.join(nbor_symbols))
 					
 			types.append((ty, element_symbol, mass))
-			SG.node[name]['force_field_type'] = ty
-			SG.node[name]['hybridization'] = hyb
+			SG.nodes[name]['force_field_type'] = ty
+			SG.nodes[name]['hybridization'] = hyb
 
 		types = set(types)
 		Ntypes = len(types)
@@ -287,8 +287,8 @@ class Dreiding(force_field):
 		for e in SG.edges(data=True):
 
 			i,j,data = e
-			fft_i = SG.node[i]['force_field_type']
-			fft_j = SG.node[j]['force_field_type']
+			fft_i = SG.nodes[i]['force_field_type']
+			fft_j = SG.nodes[j]['force_field_type']
 			bond_type = data['bond_type']
 
 			# look for the bond order, otherwise use the convention based on the bond type
@@ -346,9 +346,9 @@ class Dreiding(force_field):
 				j = name
 				i, k = comb
 
-				fft_i = SG.node[i]['force_field_type']
-				fft_j = SG.node[j]['force_field_type']
-				fft_k = SG.node[k]['force_field_type']
+				fft_i = SG.nodes[i]['force_field_type']
+				fft_j = SG.nodes[j]['force_field_type']
+				fft_k = SG.nodes[k]['force_field_type']
 
 				sort_ik = sorted([(fft_i,i),(fft_k,k)], key=lambda x:x[0])
 				fft_i, i = sort_ik[0]
@@ -401,12 +401,12 @@ class Dreiding(force_field):
 		for e in SG.edges(data=True):
 
 			j,k = e[0:2]
-			fft_j = SG.node[j]['force_field_type']
-			fft_k = SG.node[k]['force_field_type']
-			hyb_j = SG.node[j]['hybridization']
-			hyb_k = SG.node[k]['hybridization']
-			els_j = SG.node[j]['element_symbol']
-			els_k = SG.node[k]['element_symbol']
+			fft_j = SG.nodes[j]['force_field_type']
+			fft_k = SG.nodes[k]['force_field_type']
+			hyb_j = SG.nodes[j]['hybridization']
+			hyb_k = SG.nodes[k]['hybridization']
+			els_j = SG.nodes[j]['element_symbol']
+			els_k = SG.nodes[k]['element_symbol']
 			bond_order = e[2]['bond_order']
 			nodes = (j,k)
 

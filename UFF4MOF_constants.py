@@ -234,7 +234,8 @@ UFF4MOF_atom_parameters = {
 "O_3_M": (0.658, 104.51, 3.500, 0.060, 14.085, 2.3000, 0.018, 8.7410)  # this should be used for O in coordinated solvent
 }
 
-# without MIL-53 type nodes
+# all M-M bonds have order 0.25 unless otherwise specified by UFF4MOF
+# all M-O bonds have order 0.50 unless otherwise specified by UFF4MOF
 UFF4MOF_bond_orders_0 = {
 	("Ti4+2", "Ti4+2") : 0.25,
 	("V_4+2", "V_4+2") : 3.00,
@@ -253,7 +254,7 @@ UFF4MOF_bond_orders_0 = {
 	("Cr6f3", "O_2_M") : 0.50,
 	("Co6+2", "O_2_M") : 0.50,
 	("Mn6+3", "O_2_M") : 0.50,
-	("Mg6f3", "O_2_M") : 1.00,
+	("Mg6f3", "O_2_M") : 0.50,
 	("Mn4+2", "O_2_M") : 0.50,
 	("Fe6+3", "O_2_M") : 0.50,
 	("Fe4+2", "O_2_M") : 0.50,
@@ -268,9 +269,9 @@ UFF4MOF_bond_orders_0 = {
 	("V_6+3", "O_2_z") : 1.00,
 	("Al6+3", "O_2_z") : 1.00,
 	("Cr6f3", "O_2_z") : 1.00,
-	("Mg6f3", "O_2_z") : 0.50,
 	("Fe6+3", "O_2_z") : 1.00,
-	("Mn6+3", "O_2_z") : 1.00,
+	("Mg6f3", "O_2_z") : 0.50,
+	("Mn6+3", "O_2_z") : 0.50,
 	("Zn4+2", "O_2_z") : 0.50,
 	("Ti6+2", "O_2_z") : 0.50,
 	("Ti6+2", "O_3_f") : 0.50,
@@ -280,29 +281,17 @@ UFF4MOF_bond_orders_0 = {
 	("Cr6f3", "O_3_M") : 0.50,
 	("Zn3f2", "O_3_f") : 0.50,
 	("Zr8f4", "O_3_f") : 0.50,
-	("Co6+2", "O_3_f") : 0.25,
-	("Co6+2", "Cl_f" ) : 0.25,
+	("Co6+2", "O_3_f") : 0.50,
+	("Co6+2", "Cl_f" ) : 0.50,
 	("Mn6+2", "Cl_f" ) : 0.50,
 	("Mn6+2", "N_R"  ) : 0.50,
-	("Eu8f4", "O_2_z") : 0.25,
+	("C_R", "O_2_z")   : 1.00,
 	'S': 1.00,
 	'A': 1.50,
 	'D': 2.00,
 	'T': 3.00
 }
 
-	
-#import re
-#def nn(string):
-#	return re.sub('[^a-zA-Z]','', string)
-#def nf(string):
-#	return re.sub('[f]','', string)
-#
-#radii = []
-#for ty in UFF4MOF_atom_parameters:
-#	params = UFF4MOF_atom_parameters[ty]
-#	vdw_radius = (params[2] * (2**(-1.0/6.0)))/2.0
-#	symbol = nn(ty)
 #	if len(symbol) > 2:
 #		symbol = symbol[0:2]
 #	radii.append((symbol, vdw_radius))

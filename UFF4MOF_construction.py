@@ -125,9 +125,9 @@ class UFF4MOF(force_field):
 					comp_coords = []
 					for n in nbors:
 	
-						dist_n, sym_n = PBC3DF_sym(SG.node[n]['fractional_position'], inf['fractional_position'])
+						dist_n, sym_n = PBC3DF_sym(SG.nodes[n]['fractional_position'], inf['fractional_position'])
 						dist_n = np.dot(self.unit_cell, dist_n)
-						fcoord = SG.node[n]['fractional_position'] + sym_n
+						fcoord = SG.nodes[n]['fractional_position'] + sym_n
 						comp_coords.append(np.dot(self.unit_cell, fcoord))
 	
 					comp_coords = np.array(comp_coords)
@@ -139,8 +139,8 @@ class UFF4MOF(force_field):
 					angles = []
 					for n0,n1 in itertools.combinations(nbors, 2):
 					
-						dist_j, sym_j = PBC3DF_sym(SG.node[n0]['fractional_position'], inf['fractional_position'])
-						dist_k, sym_k = PBC3DF_sym(SG.node[n1]['fractional_position'], inf['fractional_position'])
+						dist_j, sym_j = PBC3DF_sym(SG.nodes[n0]['fractional_position'], inf['fractional_position'])
+						dist_k, sym_k = PBC3DF_sym(SG.nodes[n1]['fractional_position'], inf['fractional_position'])
 							
 						dist_j = np.dot(self.unit_cell, dist_j)
 						dist_k = np.dot(self.unit_cell, dist_k)
@@ -354,8 +354,8 @@ class UFF4MOF(force_field):
 					ty = 'Rb'
 			
 			types.append((ty, element_symbol, mass))
-			SG.node[name]['force_field_type'] = ty
-			SG.node[name]['hybridization'] = hyb
+			SG.nodes[name]['force_field_type'] = ty
+			SG.nodes[name]['hybridization'] = hyb
 
 			if ty == None:
 				raise ValueError('No UFF4MOF type identified for atom ' + element_symbol + ' with neighbors ' + ' '.join(nbor_symbols))
@@ -584,11 +584,11 @@ class UFF4MOF(force_field):
 		for e in SG.edges(data=True):
 
 			i,j,data = e
-			fft_i = SG.node[i]['force_field_type']
-			fft_j = SG.node[j]['force_field_type']
+			fft_i = SG.nodes[i]['force_field_type']
+			fft_j = SG.nodes[j]['force_field_type']
 			bond_type = data['bond_type']
-			esi = SG.node[i]['element_symbol']
-			esj = SG.node[j]['element_symbol']
+			esi = SG.nodes[i]['element_symbol']
+			esj = SG.nodes[j]['element_symbol']
 
 			# look for the bond order, otherwise use the convention based on the bond type
 			try:
@@ -654,9 +654,9 @@ class UFF4MOF(force_field):
 				j = name
 				i, k = comb
 
-				fft_i = SG.node[i]['force_field_type']
-				fft_j = SG.node[j]['force_field_type']
-				fft_k = SG.node[k]['force_field_type']
+				fft_i = SG.nodes[i]['force_field_type']
+				fft_j = SG.nodes[j]['force_field_type']
+				fft_k = SG.nodes[k]['force_field_type']
 
 				sort_ik = sorted([(fft_i,i),(fft_k,k)], key=lambda x:x[0])
 				fft_i, i = sort_ik[0]
@@ -721,12 +721,12 @@ class UFF4MOF(force_field):
 		for e in SG.edges(data=True):
 
 			j,k = e[0:2]
-			fft_j = SG.node[j]['force_field_type']
-			fft_k = SG.node[k]['force_field_type']
-			hyb_j = SG.node[j]['hybridization']
-			hyb_k = SG.node[k]['hybridization']
-			els_j = SG.node[j]['element_symbol']
-			els_k = SG.node[k]['element_symbol']
+			fft_j = SG.nodes[j]['force_field_type']
+			fft_k = SG.nodes[k]['force_field_type']
+			hyb_j = SG.nodes[j]['hybridization']
+			hyb_k = SG.nodes[k]['hybridization']
+			els_j = SG.nodes[j]['element_symbol']
+			els_k = SG.nodes[k]['element_symbol']
 			bond_order = e[2]['bond_order']
 			nodes = (j,k)
 
@@ -782,7 +782,7 @@ class UFF4MOF(force_field):
 			if len(nbors) == 3:
 				
 				fft_i = data['force_field_type']
-				fft_nbors = tuple(sorted([SG.node[m]['force_field_type'] for m in nbors]))
+				fft_nbors = tuple(sorted([SG.nodes[m]['force_field_type'] for m in nbors]))
 				O_2_flag = False
 				# force constant is much larger if j,k, or l is O_2
 				if 'O_2' in fft_nbors or 'O_2_M' in fft_nbors:
