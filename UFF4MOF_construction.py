@@ -183,8 +183,13 @@ class UFF4MOF(force_field):
 				elif element_symbol in ('N', 'P'):
 					if element_symbol == 'N':
 						if len(nbors) < 4:
-							ty = element_symbol + '_' + str(len(nbors))
-							hyb = 'sp' + str(len(nbors))
+							# special case for -NO2
+							if sorted(nbor_symbols) == ['C','O','O']:
+								ty = element_symbol + '_2'
+								hyb = 'sp2'
+							else:
+								ty = element_symbol + '_' + str(len(nbors))
+								hyb = 'sp' + str(len(nbors))
 						else:
 							ty = 'N_2'
 					elif element_symbol == 'P':
