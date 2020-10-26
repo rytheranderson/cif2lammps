@@ -185,7 +185,7 @@ class UFF4MOF(force_field):
 						if len(nbors) < 4:
 							# special case for -NO2
 							if sorted(nbor_symbols) == ['C','O','O']:
-								ty = element_symbol + '_2'
+								ty = element_symbol + '_R'
 								hyb = 'sp2'
 							else:
 								ty = element_symbol + '_' + str(len(nbors))

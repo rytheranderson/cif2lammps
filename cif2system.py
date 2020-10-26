@@ -205,6 +205,13 @@ def initialize_system(filename, charges=False, small_molecule_cutoff=10, read_py
 			print_flag = True
 			data['bond_type'] = 'A'
 
+		if es0 == 'N' and es1 == 'O' and sorted(nbors0_symbols) == ['C','O','O']:
+			print_flag = True
+			data['bond_type'] = 'A'
+		if es1 == 'N' and es0 == 'O' and sorted(nbors1_symbols) == ['C','O','O']:
+			print_flag = True
+			data['bond_type'] = 'A'
+
 	if print_flag:
 		print('correcting carboxyllic bond type to aromatic for', filename)
 
