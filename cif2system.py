@@ -102,21 +102,19 @@ def cif_read(filename, charges=False):
 		if '_cell_angle_gamma' in line:
 			gamma = s[1]
 		if iscoord(s):
-
-			if s[1] != 'U':
 			
-				names.append(s[0])
-				elems.append(s[1])
-				
-				fvec = np.array([np.round(float(v),8) for v in s[2:5]])
-				for dim in range(len(fvec)):
-					if fvec[dim] < 0.0:
-						fvec[dim] += 1.0
-					elif fvec[dim] > 1.0:
-						fvec[dim] -= 1.0
-	
-				fcoords.append(fvec)
-				charge_list.append(float(s[-1]))
+			names.append(s[0])
+			elems.append(s[1])
+			
+			fvec = np.array([np.round(float(v),8) for v in s[2:5]])
+			for dim in range(len(fvec)):
+				if fvec[dim] < 0.0:
+					fvec[dim] += 1.0
+				elif fvec[dim] > 1.0:
+					fvec[dim] -= 1.0
+
+			fcoords.append(fvec)
+			charge_list.append(float(s[-1]))
 
 		if isbond(s):
 			
@@ -198,13 +196,15 @@ def initialize_system(filename, charges=False, small_molecule_cutoff=10, read_py
 		es1 = G.nodes[e1]['element_symbol']
 		bond_type = data['bond_type']
 
-		if es0 == 'O' and es1 == 'C' and any(i in metals for i in nbors0_symbols) and bond_type != 'A':
+		# carboxylate oxygens should have aromatic bonds with C
+		if len(nbors0_symbols) == 2 and es0 == 'O' and es1 == 'C' and any(i in metals for i in nbors0_symbols) and bond_type != 'A':
 			print_flag = True
 			data['bond_type'] = 'A'
-		if es1 == 'O' and es0 == 'C' and any(i in metals for i in nbors1_symbols) and bond_type != 'A':
+		if len(nbors1_symbols) == 2 and es1 == 'O' and es0 == 'C' and any(i in metals for i in nbors1_symbols) and bond_type != 'A':
 			print_flag = True
 			data['bond_type'] = 'A'
 
+		# nitro nitrogens should have aromatic bonds with O
 		if es0 == 'N' and es1 == 'O' and sorted(nbors0_symbols) == ['C','O','O']:
 			print_flag = True
 			data['bond_type'] = 'A'
@@ -213,7 +213,7 @@ def initialize_system(filename, charges=False, small_molecule_cutoff=10, read_py
 			data['bond_type'] = 'A'
 
 	if print_flag:
-		print('correcting carboxyllic bond type to aromatic for', filename)
+		print('correcting bond type to aromatic for', filename)
 
 	components = []
 	SGS = [G.subgraph(c).copy() for c in nx.connected_components(G)]

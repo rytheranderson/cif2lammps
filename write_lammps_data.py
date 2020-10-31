@@ -9,6 +9,7 @@ import math
 import warnings
 from ase import Atoms, Atom
 from ase.io import write
+from itertools import combinations
 
 import UFF4MOF_constants
 import UFF_constants
@@ -105,16 +106,6 @@ def lammps_inputs(args):
 	suffix = cifname.split('/')[-1].split('.')[0] + '_' + replication
 	data_name = 'data.' + suffix
 
-	#with open('check.xyz', 'w') as out:
-	#	out.write(str(len(SG.nodes())))
-	#	out.write('\n')
-	#	out.write('\n')
-	#	for atom, atom_data in SG.nodes(data=True):
-	#		pos = [np.round(v,8) for v in atom_data['cartesian_position']]
-	#		line = [atom_data['element_symbol']] + pos
-	#		out.write('{} {} {} {}'.format(*line))
-	#		out.write('\n')
-
 	with open(outdir + os.sep + data_name, 'w') as data:
 		data.write(first_line + '\n')
 		data.write('\n')
@@ -143,26 +134,21 @@ def lammps_inputs(args):
 			data.write('{:>5} {:>10}'.format(aty, mass))
 			data.write('\n')
 		data.write('\n')
-		data.write('Pair Coeffs\n')
-		data.write('\n')
 
-		for aty in FF.pair_data['params']:
+		pair_style = FF.pair_data['style']
 
-			params = FF.pair_data['params'][aty]
-			params = [np.round(x,6) if isfloat(x) else x for x in params]
-			comment = FF.pair_data['comments'][aty]
-			style = FF.pair_data['style']
+		if 'hybrid' not in pair_style:
 
-			if 'hybrid' in style:
-				# type
-				data.write('    {:<3}'.format(aty))
-				# style needs to be written for hybrid
-				data.write('{:<20}'.format(params[0]))
-				format_string = ' '.join(['{:{w}.{p}f}' if not np.issubdtype(x, np.integer) else '{:{w}}' for x in params[1:]])
-				data.write(format_string.format(*params[1:], w=12, p=5))
-				data.write(' '.join(['#'] + comment))
-				data.write('\n')
-			else:
+			data.write('Pair Coeffs\n')
+			data.write('\n')
+	
+			for aty in FF.pair_data['params']:
+	
+				params = FF.pair_data['params'][aty]
+				params = [np.round(x,6) if isfloat(x) else x for x in params]
+				comment = FF.pair_data['comments'][aty]
+				style = FF.pair_data['style']
+	
 				# type
 				data.write('    {:<3}'.format(aty))
 				format_string = ' '.join(['{:{w}.{p}f}' if not np.issubdtype(x, np.integer) else '{:{w}}' for x in params[1:]])
@@ -373,13 +359,29 @@ def lammps_inputs(args):
 					data.write('\n')
 
 	with open(outdir + os.sep + 'in.' + suffix, 'w') as infile:
+		
 		infile.write('units           real\n')
 		infile.write('atom_style      full\n')
 		infile.write('boundary        p p p\n')
 		infile.write('\n')
-		infile.write('pair_style      ' + FF.pair_data['style'] + ' ' + str(FF.cutoff) + '\n')
+		
+		pair_style = FF.pair_data['style']
+
+		if 'hybrid' not in pair_style:
+			infile.write('pair_style      ' + FF.pair_data['style'] + ' ' + str(FF.cutoff) + '\n')
+		else:
+			
+			style_list = FF.pair_data['style'].split()
+			style_string = style_list[0] + ' '
+			
+			for st in style_list[1:]:
+				style_string += st + ' ' + str(FF.cutoff) + ' '
+
+			infile.write('pair_style      ' + style_string + '\n')
+		
 		infile.write('bond_style      ' + FF.bond_data['style'] + '\n')
 		infile.write('angle_style     ' + FF.angle_data['style'] + '\n')
+
 		try:
 			infile.write('dihedral_style  ' + FF.dihedral_data['style'] + '\n')
 		except AttributeError:
@@ -388,8 +390,13 @@ def lammps_inputs(args):
 			infile.write('improper_style  ' + FF.improper_data['style'] + '\n')
 		except AttributeError:
 			pass
-		if charges:
-			infile.write('kspace_style    ewald 0.000001\n')
+
+		# use ewald summation for long range solver unless using pair_style lj/cut/tip4p/long
+		if charges or ('coul' in pair_style and 'tip4p' not in pair_style):
+			infile.write('kspace_style    ewald 0.00001\n')
+		elif 'tip4p' in pair_style:
+			infile.write('kspace_style    pppm/tip4p 0.00001\n')
+
 		infile.write('\n')
 		sb = FF.pair_data['special_bonds']
 		infile.write('dielectric      1.0\n')
@@ -397,5 +404,53 @@ def lammps_inputs(args):
 		infile.write('special_bonds   ' + sb + '\n')
 		infile.write('box             tilt large\n')
 		infile.write('read_data       ' + data_name + '\n')
+
+		if 'hybrid' in pair_style:
+
+			infile.write('\n')
+
+			for aty0 in FF.pair_data['params']:
+
+				params0 = FF.pair_data['params'][aty0]
+
+				if len(params0) > 3:
+					raise ValueError('pair_style hybrid is only supported for lj type vdw interactions (two numeric parameters).')
+	
+				params0 = [np.round(x,6) if isfloat(x) else x for x in params0]
+				style0, eps0, sig0 = params0
+	
+				line = ['pair_coeff',aty0, aty0, style0, eps0, sig0]
+				infile.write('{:12} {:<3} {:<3} {:20} {:10.6f} {:10.6f}'.format(*line))
+				infile.write('\n')
+			
+			infile.write('\n')
+
+			for (aty0, aty1) in combinations(FF.pair_data['params'],2):
+	
+				params0 = FF.pair_data['params'][aty0]
+				params0 = [np.round(x,6) if isfloat(x) else x for x in params0]
+				style0, eps0, sig0 = params0
+	
+				params1 = FF.pair_data['params'][aty1]
+				params1 = [np.round(x,6) if isfloat(x) else x for x in params1]
+				style1, eps1, sig1 = params1
+				
+				# current logic is to use the longer style, this actually works well when using lj/cut for 
+				# framework atoms and lj/cut + charge interactions for framework/molecule and molecule/molecule
+				# interactions. This is mostly what I use pair_style hybrid for.
+				style = style0 if len(style0) > len(style1) else style1
+				
+				if 'geometric' in mixing_rules:
+					pair_eps = np.round(np.sqrt(eps0 * eps1), 6)
+					pair_sig = np.round(np.sqrt(sig0 * sig1), 6)
+				elif 'arithmetic' in mixing_rules:
+					pair_eps = np.round(np.sqrt(eps0 * eps1), 6)
+					pair_sig = np.round((sig0 + sig1)/2.0, 6)
+
+				line = ['pair_coeff', aty0, aty1, style, pair_eps, pair_sig]
+
+				infile.write('{:12} {:<3} {:<3} {:20} {:10.6f} {:10.6f}'.format(*line))
+				infile.write('\n')
+
 		infile.write('\n')
 

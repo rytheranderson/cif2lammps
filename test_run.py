@@ -7,18 +7,11 @@ from ZIFFF_construction import ZIFFF
 
 if __name__ == '__main__':
 
-	#optional_arguments = {'force_field':ZIFFF, 
-	#					  'ff_string':'ZIFFF', 
-	#					  'small_molecule_force_field':'TIP4P', 
-	#					  'charges':False,
-	#					  'replication':'1x1x1', 
-	#					  'read_cifs_pymatgen':True}
-
 	optional_arguments = {'force_field':UFF4MOF, 
 						  'ff_string':'UFF4MOF', 
-						  'small_molecule_force_field':None, 
+						  'small_molecule_force_field':'TIP4P', 
 						  'charges':False,
-						  'replication':'1x1x1', 
+						  'replication':'cutoff', 
 						  'read_cifs_pymatgen':False}
 
 	serial_conversion('unopt_cifs', **optional_arguments)

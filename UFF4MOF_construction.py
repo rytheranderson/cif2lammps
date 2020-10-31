@@ -262,7 +262,7 @@ class UFF4MOF(force_field):
 							ty = 'S_3+6'
 							hyb = 'sp3'
 				# Group 9
-				elif element_symbol in ('F', 'Cl', 'Br') and len(nbor_symbols) in (1,2,4):
+				elif element_symbol in ('F', 'Cl', 'Br') and len(nbor_symbols) in (0,1,2,4):
 					if element_symbol != 'Cl':
 						if len(element_symbol) == 1:
 							ty = element_symbol + '_'
@@ -271,9 +271,12 @@ class UFF4MOF(force_field):
 						hyb = 'sp1'
 					# some Cl have 90 degree angles in CoRE MOFs
 					else:
-						if dist_corner <= dist_linear:
-							ty = 'Cl_f'
-						elif dist_linear < dist_corner:
+						if len(nbor_symbols) > 0:
+							if dist_corner <= dist_linear:
+								ty = 'Cl_f'
+							elif dist_linear < dist_corner:
+								ty = 'Cl'
+						else:
 							ty = 'Cl'
 
 				# metals
@@ -364,6 +367,8 @@ class UFF4MOF(force_field):
 
 			if ty == None:
 				raise ValueError('No UFF4MOF type identified for atom ' + element_symbol + ' with neighbors ' + ' '.join(nbor_symbols))
+			elif ty == 'C_R' and len(nbor_symbols) > 3:
+				raise ValueError('Too many neighbors for aromatic carbon ' + element_symbol + ' with neighbors ' + ' '.join(nbor_symbols))
 
 		types = set(types)
 		Ntypes = len(types)
