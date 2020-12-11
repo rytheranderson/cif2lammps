@@ -130,3 +130,5 @@ mass_key = {
 "Uuh": 293,
 "Uuo": 294
 }
+
+PT = [es for es in mass_key]

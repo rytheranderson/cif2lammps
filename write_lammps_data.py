@@ -76,7 +76,7 @@ def lammps_inputs(args):
 		if len(FF.system['SM_graph'].nodes()) != 0:
 			warnings.warn('extra-framework molecules detected, but no small molecule force field is specified!')
 
-	first_line = "Created by Ryther's extremely high quality code on " + str(datetime.datetime.now())
+	first_line = "Created by Ryther's code on " + str(datetime.datetime.now())
 
 	SG = FF.system['graph']
 	N_atoms, ty_atoms = (len(SG.nodes()), len(FF.atom_types))

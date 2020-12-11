@@ -11,7 +11,7 @@ if __name__ == '__main__':
 						  'ff_string':'UFF4MOF', 
 						  'small_molecule_force_field':'TIP4P', 
 						  'charges':False,
-						  'replication':'cutoff', 
+						  'replication':'1x1x1', 
 						  'read_cifs_pymatgen':False}
 
 	serial_conversion('unopt_cifs', **optional_arguments)

@@ -153,7 +153,7 @@ def cif_read(filename, charges=False):
 
 	return elems, names, ccoords, fcoords, charge_list, bonds, (a,b,c,alpha,beta,gamma), unit_cell
 
-def initialize_system(filename, charges=False, small_molecule_cutoff=10, read_pymatgen=False):
+def initialize_system(filename, charges=False, small_molecule_cutoff=5, read_pymatgen=False):
 
 	if not read_pymatgen:
 		elems, names, ccoords, fcoords, charge_list, bonds, uc_params, unit_cell = cif_read(filename, charges=charges)
