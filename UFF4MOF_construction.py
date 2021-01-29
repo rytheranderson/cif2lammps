@@ -350,16 +350,22 @@ class UFF4MOF(force_field):
 				# only one type for Bi
 				elif element_symbol in ('As', 'Bi', 'Tl', 'Sb'):
 					ty = element_symbol + '3+3'
+					hyb = 'NA'
 				elif element_symbol == 'At':
 					ty = 'At'
+					hyb = 'NA'
 				elif element_symbol == 'Cs':
 					ty = 'Cs'
+					hyb = 'NA'
 				elif element_symbol == 'Fr':
 					ty = 'Fr'
+					hyb = 'NA'
 				elif element_symbol == 'Ni':
 					ty = 'Ni4+2'
+					hyb = 'NA'
 				elif element_symbol == 'Rb':
 					ty = 'Rb'
+					hyb = 'NA'
 			
 			types.append((ty, element_symbol, mass))
 			SG.nodes[name]['force_field_type'] = ty
@@ -371,6 +377,7 @@ class UFF4MOF(force_field):
 				raise ValueError('Too many neighbors for aromatic carbon ' + element_symbol + ' with neighbors ' + ' '.join(nbor_symbols))
 
 		types = set(types)
+		#types = sorted(types, key=lambda x:x[0])
 		Ntypes = len(types)
 		atom_types = dict((ty[0],i+1) for i,ty in zip(range(Ntypes), types))
 		atom_element_symbols = dict((ty[0], ty[1]) for ty in types)
@@ -686,7 +693,10 @@ class UFF4MOF(force_field):
 				r_jk = bond_params[bond_type_jk][2]
 
 				angle = sorted((fft_i, fft_k))
-				angle = (angle[0], fft_j, angle[1], r_ij, r_jk)
+				sorted_rs = sorted((r_ij, r_jk))
+
+				#angle = (angle[0], fft_j, angle[1], r_ij, r_jk)
+				angle = (angle[0], fft_j, angle[1], sorted_rs[0], sorted_rs[1])
 
 				# add to list if angle type already exists, else add a new type
 				try:

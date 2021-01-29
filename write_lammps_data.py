@@ -1,6 +1,6 @@
 from __future__ import print_function
 from cif2system import initialize_system, replication_determination, write_cif_from_system
-from small_molecule_construction import add_small_molecules
+from small_molecule_construction import add_small_molecules, include_molecule_file
 import atomic_data
 import os
 import numpy as np
@@ -40,7 +40,7 @@ def isfloat(value):
 
 def lammps_inputs(args):
 
-	cifname, force_field, ff_string, sm_ff_string, outdir, charges, replication, read_pymatgen = args
+	cifname, force_field, ff_string, sm_ff_string, outdir, charges, replication, read_pymatgen, add_molecule = args
 
 	# add more forcefields here as they are created
 	if ff_string == 'UFF4MOF':
@@ -65,6 +65,7 @@ def lammps_inputs(args):
 		mixing_rules='shift yes mix arithmetic'
 
 	system = initialize_system(cifname, charges=charges, read_pymatgen=read_pymatgen)
+	print('system initialized...')
 	system, replication = replication_determination(system, replication, cutoff)
 
 	FF = force_field(system, cutoff, FF_args)
@@ -94,6 +95,10 @@ def lammps_inputs(args):
 	except AttributeError:
 		N_impropers = 0
 		ty_impropers = None
+
+	maxIDs = (ty_atoms, ty_bonds, ty_angles, ty_dihedrals, ty_impropers)
+	if add_molecule != None:
+		include_molecule_file(FF, maxIDs, add_molecule)
 
 	a,b,c,alpha,beta,gamma = system['box']
 	lx = np.round(a, 8)
@@ -161,7 +166,7 @@ def lammps_inputs(args):
 		data.write('\n')
 
 		for bty in FF.bond_data['params']:
-			
+
 			params = FF.bond_data['params'][bty]
 			params = [np.round(x,6) if isfloat(x) else x for x in params]
 			comment = FF.bond_data['comments'][bty]

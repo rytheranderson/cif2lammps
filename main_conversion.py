@@ -20,7 +20,8 @@ from ZIFFF_construction import ZIFFF
 
 force_fields = ['UFF4MOF']
 
-def serial_conversion(directory, force_field=UFF4MOF, ff_string='UFF4MOF', small_molecule_force_field=None, outdir='unopt_lammps_data', charges=False, parallel=False, replication='1x1x1', read_cifs_pymatgen=False):
+def serial_conversion(directory, force_field=UFF4MOF, ff_string='UFF4MOF', small_molecule_force_field=None, 
+	outdir='unopt_lammps_data', charges=False, parallel=False, replication='1x1x1', read_cifs_pymatgen=False, add_molecule=None):
 
 	try:
 		os.mkdir(outdir)
@@ -32,11 +33,12 @@ def serial_conversion(directory, force_field=UFF4MOF, ff_string='UFF4MOF', small
 	cifs = sorted(glob.glob(directory + os.sep + '*.cif'))
 	for cif in cifs:
 		print('converting ', cif, '...')
-		lammps_inputs([cif, force_field, ff_string, small_molecule_force_field, outdir, charges, replication, read_cifs_pymatgen])
+		lammps_inputs([cif, force_field, ff_string, small_molecule_force_field, outdir, charges, replication, read_cifs_pymatgen, add_molecule])
 
 	print('--- cifs in', directory, 'converted and placed in', outdir, '---')
 
-def parallel_conversion(directory, force_field=UFF4MOF, ff_string='UFF4MOF', small_molecule_force_field=None, outdir='unopt_lammps_data', charges=False, parallel=True, replication='1x1x1', read_cifs_pymatgen=False):
+def parallel_conversion(directory, force_field=UFF4MOF, ff_string='UFF4MOF', small_molecule_force_field=None, 
+	outdir='unopt_lammps_data', charges=False, parallel=True, replication='1x1x1', read_cifs_pymatgen=False, add_molecule=None):
 
 	try:
 		os.mkdir(outdir)
@@ -46,7 +48,7 @@ def parallel_conversion(directory, force_field=UFF4MOF, ff_string='UFF4MOF', sma
 	print('conversion running on ' + str(multiprocessing.cpu_count()) + ' cores')
 
 	cifs = sorted(glob.glob(directory + os.sep + '*.cif'))
-	args = [[cif, force_field, ff_string, small_molecule_force_field, outdir, charges, replication, read_cifs_pymatgen] for cif in cifs]
+	args = [[cif, force_field, ff_string, small_molecule_force_field, outdir, charges, replication, read_cifs_pymatgen, add_molecule] for cif in cifs]
 	pool = Pool(multiprocessing.cpu_count())
 	results_par = pool.map_async(lammps_inputs, args) 
 	pool.close()
@@ -84,15 +86,24 @@ def run_conversion():
 	parser.add_argument('--GULP', action='store_true', dest='GULP', required=False, default=False, help='write GULP inputs instead of LAMMPS')
 	parser.add_argument('--parallel', action='store_true', dest='parallel', required=False, default=False, help='switch on parallel conversion')
 	parser.add_argument('--read_cifs_pymatgen', action='store_true', dest='read_cifs_pymatgen', required=False, default=False, help='use ASE to read CIF inputs')
+	parser.add_argument('--add_molecule', action='store', dest='add_molecule', required=False, default=None, help='name of a molecule to write molecule file for')
 
 	args = parser.parse_args()
 	print(args)
+
+	if args.add_molecule != None:
+		# should be name of molecule, model, number to add
+		add_molecule = args.add_molecule.split(',')
+		add_molecule[2] = int(add_molecule[2])
+	else:
+		add_molecule = args.add_molecule
 
 	ff_dict = {'UFF4MOF':UFF4MOF, 'UFF':UFF, 'Dreiding':Dreiding, 'MZHB':MZHB, 'ZIFFF':ZIFFF}
 	force_field = ff_dict[args.ff_string]
 
 	optional_arguments = {'force_field':force_field, 'ff_string':args.ff_string, 'small_molecule_force_field':args.sm_ff_string, 
-						  'outdir':args.outdir, 'charges':args.charges, 'replication':args.replication, 'read_cifs_pymatgen':args.read_cifs_pymatgen}
+						  'outdir':args.outdir, 'charges':args.charges, 'replication':args.replication, 'read_cifs_pymatgen':args.read_cifs_pymatgen,
+						  'add_molecule':add_molecule}
 
 	if args.GULP:
 		print('converting to GULP format...')

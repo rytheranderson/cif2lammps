@@ -12,7 +12,8 @@ if __name__ == '__main__':
 						  'small_molecule_force_field':'TIP4P', 
 						  'charges':False,
 						  'replication':'1x1x1', 
-						  'read_cifs_pymatgen':False}
+						  'read_cifs_pymatgen':False,
+						  'add_molecule':('water','TIP4P_cutoff',10)}
 
 	serial_conversion('unopt_cifs', **optional_arguments)
 	#serial_conversion('check_cifs', **optional_arguments)

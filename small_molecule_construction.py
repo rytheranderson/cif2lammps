@@ -4,6 +4,7 @@ import atomic_data
 from itertools import groupby, combinations
 import small_molecule_constants
 from cif2system import PBC3DF_sym
+import write_molecule_files as WMF
 
 mass_key = atomic_data.mass_key
 
@@ -243,6 +244,48 @@ def add_small_molecules(FF, ff_string):
 
 	FF.bond_data['count'] = (FF.bond_data['count'][0], len(FF.bond_data['params']))
 	FF.angle_data['count'] = (FF.angle_data['count'][0], len(FF.angle_data['params']))
+
+def include_molecule_file(FF, maxIDs, add_molecule):
+
+	max_atom_ty, max_bond_ty, max_angle_ty, max_dihedral_ty, max_improper_ty = maxIDs
+	molname, model, N = add_molecule
+
+	if molname in ('water','Water','H2O','h2o'):
+		molfile, LJ_params, bond_params, angle_params = WMF.water(max_atom_ty, max_bond_ty, max_angle_ty, model=model)
+		dihedral_params = None
+		improper_params = None
+
+	add_LJ_style = LJ_params['style']
+	if add_LJ_style not in FF.pair_data['style']:
+		FF.pair_data['style'] = FF.pair_data['style'] + ' ' + add_LJ_style
+		if 'hybrid' not in FF.pair_data['style']:
+			FF.pair_data['style'] = 'hybrid ' + FF.pair_data['style']
+
+	if bond_params != None:
+		add_bond_styles = set([bond_params[bty]['style'] for bty in bond_params])
+		for ABS in add_bond_styles:
+			if ABS not in FF.bond_data['style']:
+				FF.bond_data['style'] = 'hybrid'
+
+	if angle_params != None:
+		add_angle_styles = set([angle_params[aty]['style'] for aty in angle_params])
+		for AAS in add_angle_styles:
+			if AAS not in FF.angle_data['style']:
+				FF.angle_data['style'] = 'hybrid'
+	
+	if dihedral_params != None:
+		add_dihedral_styles = set([dihedral_params[dty]['style'] for dty in dihedral_params])
+		for ADS in add_dihedral_styles:
+			if ADS not in FF.dihedral_data['style']:
+				FF.dihedral_data['style'] = 'hybrid'
+	
+	if improper_params != None:
+		add_improper_styles = set([improper_params[ity]['style'] for ity in improper_params])
+		for AIS in add_improper_styles:
+			if AIS not in FF.improper_data['style']:
+				FF.improper_data['style'] = 'hybrid'
+
+	print(FF.pair_data)
 
 
 
