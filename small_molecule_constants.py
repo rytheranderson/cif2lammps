@@ -23,15 +23,16 @@ TraPPE =  {
 }
 
 TIP4P =  {
+# this is TIP4P/2005 water, should be used with long-range electrostatics with 8.5 Å cutoff and fix/shake
 	'H2O1': {
-		'pair': {'style': 'lj/cut/tip4p/long', 'vdW': {'H_w': (0.0,0.0), 'O_w': (0.16275,3.16435)}, 'charges': {'H_w': 0.5242, 'O_w': 0.0}},
-		'bonds': {('H_w','O_w'): ('harmonic', 100.0, 0.9572)},
-		'angles': {('H_w','O_w','H_w'): ('harmonic', 100.0, 104.52)},
+		'pair': {'style': 'lj/cut/tip4p/long', 'vdW': {'H_w': (0.0,0.0), 'O_w': (0.1852, 3.1589)}, 'charges': {'H_w': 0.5564, 'O_w': -1.1128}},
+		'bonds': {('H_w','O_w'): ('harmonic', 450.0, 0.9572)},
+		'angles': {('H_w','O_w','H_w'): ('harmonic', 55.0, 104.52)},
 		'dihedrals': None,
 		'impropers': None
 	},
 	'Cl1': {
-		'pair': {'style': 'lj/cut/coul/long', 'vdW': {'Cl_Cl1': (0.22700, 3.51638)}, 'charges': {'Cl_Cl1': -1.0}},
+		'pair': {'style': 'lj/cut/tip4p/cut', 'vdW': {'Cl_Cl1': (0.22700, 3.51638)}, 'charges': {'Cl_Cl1': -1.0}},
 		'bonds': None,
 		'angles': None,
 		'dihedrals': None,

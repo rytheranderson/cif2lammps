@@ -68,6 +68,8 @@ def lammps_inputs(args):
 	print('system initialized...')
 	system, replication = replication_determination(system, replication, cutoff)
 
+	write_cif_from_system(system, 'check.cif')
+
 	FF = force_field(system, cutoff, FF_args)
 	FF.compile_force_field(charges=charges)
 
@@ -96,9 +98,13 @@ def lammps_inputs(args):
 		N_impropers = 0
 		ty_impropers = None
 
+	suffix = cifname.split('/')[-1].split('.')[0] + '_' + replication
+
 	maxIDs = (ty_atoms, ty_bonds, ty_angles, ty_dihedrals, ty_impropers)
 	if add_molecule != None:
-		include_molecule_file(FF, maxIDs, add_molecule)
+		molfile, infile_add_lines, extra_types = include_molecule_file(FF, maxIDs, add_molecule)
+		with open(outdir + os.sep + 'mol.' + suffix, 'w') as MF:
+			MF.write(molfile)
 
 	a,b,c,alpha,beta,gamma = system['box']
 	lx = np.round(a, 8)
@@ -108,7 +114,6 @@ def lammps_inputs(args):
 	yz = np.round((b*c*np.cos(math.radians(alpha)) - xy*xz)/ly, 8)
 	lz = np.round(np.sqrt(c**2 - xz**2 - yz**2), 8)
 
-	suffix = cifname.split('/')[-1].split('.')[0] + '_' + replication
 	data_name = 'data.' + suffix
 
 	with open(outdir + os.sep + data_name, 'w') as data:
@@ -204,6 +209,7 @@ def lammps_inputs(args):
 		data.write('\n')
 
 		for aty in FF.angle_data['params']:
+
 			params = FF.angle_data['params'][aty]
 			params = [np.round(x,6) if isfloat(x) else x for x in params]
 			comment = FF.angle_data['comments'][aty]
@@ -364,26 +370,12 @@ def lammps_inputs(args):
 					data.write('\n')
 
 	with open(outdir + os.sep + 'in.' + suffix, 'w') as infile:
-		
+				
 		infile.write('units           real\n')
 		infile.write('atom_style      full\n')
 		infile.write('boundary        p p p\n')
 		infile.write('\n')
-		
-		pair_style = FF.pair_data['style']
 
-		if 'hybrid' not in pair_style:
-			infile.write('pair_style      ' + FF.pair_data['style'] + ' ' + str(FF.cutoff) + '\n')
-		else:
-			
-			style_list = FF.pair_data['style'].split()
-			style_string = style_list[0] + ' '
-			
-			for st in style_list[1:]:
-				style_string += st + ' ' + str(FF.cutoff) + ' '
-
-			infile.write('pair_style      ' + style_string + '\n')
-		
 		infile.write('bond_style      ' + FF.bond_data['style'] + '\n')
 		infile.write('angle_style     ' + FF.angle_data['style'] + '\n')
 
@@ -396,19 +388,98 @@ def lammps_inputs(args):
 		except AttributeError:
 			pass
 
-		# use ewald summation for long range solver unless using pair_style lj/cut/tip4p/long
-		if charges or ('coul' in pair_style and 'tip4p' not in pair_style):
-			infile.write('kspace_style    ewald 0.00001\n')
-		elif 'tip4p' in pair_style:
-			infile.write('kspace_style    pppm/tip4p 0.00001\n')
-
 		infile.write('\n')
-		sb = FF.pair_data['special_bonds']
 		infile.write('dielectric      1.0\n')
+
+		read_data_append_string = ''
+		if add_molecule != None:
+			read_data_append_string = ' '
+			et_strings = ['extra/atom/types', 'extra/bond/types', 'extra/angle/types', 'extra/dihedral/types', 'extra/improper/types']
+			for st,et in zip(et_strings, extra_types):
+				if et != None:
+					read_data_append_string += st + ' ' + str(et) + ' '
+
+		infile.write('box             tilt large\n')
+		infile.write('read_data       ' + data_name + read_data_append_string + '\n\n')
+
+		if add_molecule != None:
+
+			for line in infile_add_lines:
+				infile.write(line + '\n')
+			
+			try:
+				for bal in FF.bond_data['infile_add_lines']:
+					infile.write(bal + '\n')
+			except KeyError:
+				pass
+
+			try:	
+				for aal in FF.angle_data['infile_add_lines']:
+					infile.write(aal + '\n')
+			except KeyError:
+				pass
+
+			try:
+				for dal in FF.dihedral_data['infile_add_lines']:
+					infile.write(dal + '\n')
+			except KeyError:
+				pass
+
+			try:
+				for ial in FF.improper_data['infile_add_lines']:
+					infile.write(ial + '\n')
+			except KeyError:
+				pass
+
+			infile.write('\n')
+
+		pair_style = FF.pair_data['style']
+
+		if 'hybrid' not in pair_style:
+			infile.write('pair_style      ' + FF.pair_data['style'] + ' ' + str(FF.cutoff) + '\n')
+		else:
+			
+			style_list = FF.pair_data['style'].split()
+
+			for pos,st in enumerate(style_list):
+				if 'lj/cut/tip4p/' in st:
+					add_arg = ' ' + ' '.join([ 
+					str(FF.pair_data['O_type']), str(FF.pair_data['H_type']), 
+					str(FF.pair_data['H2O_bond_type']), str(FF.pair_data['H2O_angle_type']), 
+					str(FF.pair_data['M_site_dist']), '9.0', '8.5',
+					])
+
+					style_list[pos] = style_list[pos] + add_arg
+
+			style_string = 'hybrid '
+			for st in style_list[1:]:
+				if 'lj/cut/tip4p/' not in st:
+					style_string += st + ' ' + str(FF.cutoff) + ' '
+				else:
+					style_string += st + ' '
+
+			infile.write('pair_style      ' + style_string + '\n')
+
+		if add_molecule != None:
+			if 'TIP' in add_molecule[1] and 'hybrid' not in FF.pair_data['style']:
+				mixing_rules = 'tail yes mix geometric'
+			elif 'TIP' in add_molecule[1] and 'hybrid' in FF.pair_data['style']:
+				mixing_rules = 'tail yes'
+		else:
+			if sm_ff_string == 'TIP4P' and 'hybrid' not in FF.pair_data['style']:
+				mixing_rules = 'tail yes mix geometric'
+			elif sm_ff_string == 'TIP4P' and 'hybrid' in FF.pair_data['style']:
+				mixing_rules = 'tail yes'
+
+		sb = FF.pair_data['special_bonds']
 		infile.write('pair_modify     ' + mixing_rules + '\n')
 		infile.write('special_bonds   ' + sb + '\n')
-		infile.write('box             tilt large\n')
-		infile.write('read_data       ' + data_name + '\n')
+
+		# use ewald summation for long range solver unless using pair_style lj/cut/tip4p/long
+		if charges or ('coul' in pair_style and 'tip4p' not in pair_style):
+			infile.write('kspace_style    ewald 1.0e-5\n')
+		elif 'tip4p/long' in pair_style:
+			infile.write('kspace_style    pppm/tip4p 1.0e-5\n')
 
 		if 'hybrid' in pair_style:
 
@@ -423,9 +494,11 @@ def lammps_inputs(args):
 	
 				params0 = [np.round(x,6) if isfloat(x) else x for x in params0]
 				style0, eps0, sig0 = params0
+
+				comment = '#' + ' ' + ' '.join(FF.pair_data['comments'][aty0])
 	
-				line = ['pair_coeff',aty0, aty0, style0, eps0, sig0]
-				infile.write('{:12} {:<3} {:<3} {:20} {:10.6f} {:10.6f}'.format(*line))
+				line = ['pair_coeff',aty0, aty0, style0, eps0, sig0, comment]
+				infile.write('{:12} {:<3} {:<3} {:20} {:10.6f} {:10.6f} {:<20}'.format(*line))
 				infile.write('\n')
 			
 			infile.write('\n')
@@ -435,11 +508,15 @@ def lammps_inputs(args):
 				params0 = FF.pair_data['params'][aty0]
 				params0 = [np.round(x,6) if isfloat(x) else x for x in params0]
 				style0, eps0, sig0 = params0
+				comment0 = FF.pair_data['comments'][aty0][0]
 	
 				params1 = FF.pair_data['params'][aty1]
 				params1 = [np.round(x,6) if isfloat(x) else x for x in params1]
 				style1, eps1, sig1 = params1
-				
+				comment1 = FF.pair_data['comments'][aty1][0]
+
+				comments = '#' + ' ' + comment0 + ' ' + comment1
+
 				# current logic is to use the longer style, this actually works well when using lj/cut for 
 				# framework atoms and lj/cut + charge interactions for framework/molecule and molecule/molecule
 				# interactions. This is mostly what I use pair_style hybrid for.
@@ -451,11 +528,28 @@ def lammps_inputs(args):
 				elif 'arithmetic' in mixing_rules:
 					pair_eps = np.round(np.sqrt(eps0 * eps1), 6)
 					pair_sig = np.round((sig0 + sig1)/2.0, 6)
+				else:
+					pair_eps = np.round(np.sqrt(eps0 * eps1), 6)
+					pair_sig = np.round(np.sqrt(sig0 * sig1), 6)
 
-				line = ['pair_coeff', aty0, aty1, style, pair_eps, pair_sig]
+				line = ['pair_coeff', aty0, aty1, style, pair_eps, pair_sig, comments]
 
-				infile.write('{:12} {:<3} {:<3} {:20} {:10.6f} {:10.6f}'.format(*line))
+				infile.write('{:12} {:<3} {:<3} {:20} {:10.6f} {:10.6f} {:<20}'.format(*line))
 				infile.write('\n')
 
-		infile.write('\n')
+			infile.write('\n')
 
+			if add_molecule != None:
+				if 'TIP4P' in add_molecule[1]:
+					group_line = 'group           H2O type ' + str(FF.pair_data['O_type']) + ' ' + str(FF.pair_data['H_type']) + '\n'
+					shake_line = 'fix             H2O_shake H2O shake 0.0001 50 0 b ' + str(FF.pair_data['H2O_bond_type']) + ' a ' + str(FF.pair_data['H2O_angle_type']) + ' mol H2O_mol\n'
+					infile.write(group_line)
+					infile.write(shake_line)
+			else:
+				if sm_ff_string == 'TIP4P':
+					group_line = 'group           H2O type ' + str(FF.pair_data['O_type']) + ' ' + str(FF.pair_data['H_type']) + '\n'
+					shake_line = 'fix             H2O_shake H2O shake 0.0001 50 0 b ' + str(FF.pair_data['H2O_bond_type']) + ' a ' + str(FF.pair_data['H2O_angle_type']) + ' mol H2O_mol\n'
+					infile.write(group_line)
+					infile.write(shake_line)
+
+		infile.write('\n')

@@ -2,9 +2,13 @@ import networkx as nx
 import numpy as np
 import atomic_data
 from itertools import groupby, combinations
+from random import randint
 import small_molecule_constants
 from cif2system import PBC3DF_sym
 import write_molecule_files as WMF
+from ase import Atom, Atoms
+from ase import neighborlist
+from ase.geometry import get_distances
 
 mass_key = atomic_data.mass_key
 
@@ -20,6 +24,39 @@ def add_small_molecules(FF, ff_string):
 
 	SG = FF.system['graph']
 	SMG = FF.system['SM_graph']
+	sm_bond_cutoff = 1.2
+
+	if len(SMG.edges()) == 0:
+		
+		print('there are no small molecule bonds in the CIF, calculating based on distance criteria with cutoff ' + str(sm_bond_cutoff) + ' Å...')
+		atoms = Atoms()
+
+		offset = min(SMG.nodes())
+
+		for node,data in SMG.nodes(data=True):
+			#print(node, data)
+			atoms.append(Atom(data['element_symbol'], data['cartesian_position']))
+		
+		atoms.set_cell(FF.system['box'])
+		unit_cell = atoms.get_cell()
+		cutoffs = neighborlist.natural_cutoffs(atoms)
+		NL = neighborlist.NewPrimitiveNeighborList(cutoffs, use_scaled_positions=False, self_interaction=False, skin=0.20) # default atom cutoffs work well
+		NL.build([True, True, True], unit_cell, atoms.get_positions())
+
+		for i in atoms:
+			
+			nbors = NL.get_neighbors(i.index)[0]
+
+			for j in nbors:
+
+				bond_length = get_distances(i.position, p2=atoms[j].position, cell=unit_cell, pbc=[True,True,True])
+				bond_length = np.round(bond_length[1][0][0], 3)
+	
+				SMG.add_edge(i.index + offset, j + offset, bond_length=bond_length, bond_order='1.0', bond_type='S')
+
+		NMOL = len(list(nx.connected_components(SMG)))
+		print(NMOL, 'small molecules were recovered after bond calculation')
+
 	mol_flag = 1
 	max_ind = FF.system['max_ind']
 	index = max_ind
@@ -100,6 +137,11 @@ def add_small_molecules(FF, ff_string):
 		SMG.add_edge(e0, e1, **data)
 
 	ntypes = max([FF.atom_types[ty] for ty in FF.atom_types])
+	maxatomtype_wsm = max([FF.atom_types[ty] for ty in FF.atom_types])
+
+	maxbondtype_wsm = max([bty for bty in FF.bond_data['params']])
+	maxangletype_wsm = max([aty for aty in FF.angle_data['params']])
+
 	nbonds = max([i for i in FF.bond_data['params']])
 	nangles = max([i for i in FF.angle_data['params']])
 	
@@ -245,15 +287,53 @@ def add_small_molecules(FF, ff_string):
 	FF.bond_data['count'] = (FF.bond_data['count'][0], len(FF.bond_data['params']))
 	FF.angle_data['count'] = (FF.angle_data['count'][0], len(FF.angle_data['params']))
 
+	if 'tip4p' in FF.pair_data['style']:
+		FF.pair_data['O_type'] = maxatomtype_wsm + 1
+		FF.pair_data['H_type'] = maxatomtype_wsm + 2
+		FF.pair_data['H2O_bond_type'] = maxbondtype_wsm + 1
+		FF.pair_data['H2O_angle_type'] = maxangletype_wsm + 1
+		FF.pair_data['M_site_dist'] = 0.1546 # only TIP4P/2005 is implemented 
+
+def update_potential(potential_data, new_potential_params, potential_coeff):
+
+	write_instyles = False
+	add_styles = set([new_potential_params[ty]['style'] for ty in new_potential_params])
+	for ABS in add_styles:
+		if ABS not in potential_data['style'] and 'hybrid' in potential_data['style']:
+			potential_data['style'] = potential_data['style'] + ' ' + ABS
+			write_instyles = True
+		if ABS not in potential_data['style'] and 'hybrid' not in potential_data['style']:
+			potential_data['style'] = 'hybrid ' + potential_data['style'] + ' ' + ABS
+			write_instyles = True
+		else:
+			pass
+
+	if write_instyles:
+		instyles = {ty:' ' + new_potential_params[ty]['style'] for ty in new_potential_params}
+	else:
+		instyles = {ty:'' for ty in new_potential_params}
+
+	potential_data['infile_add_lines'] = []
+	for ty,data in new_potential_params.items():
+		strparams = ' '.join([str(p) for p in data['params']])
+		potential_data['infile_add_lines'].append(potential_coeff + str(ty) + instyles[ty] + ' ' + strparams + ' ' + data['comments'])
+
 def include_molecule_file(FF, maxIDs, add_molecule):
 
 	max_atom_ty, max_bond_ty, max_angle_ty, max_dihedral_ty, max_improper_ty = maxIDs
 	molname, model, N = add_molecule
 
 	if molname in ('water','Water','H2O','h2o'):
-		molfile, LJ_params, bond_params, angle_params = WMF.water(max_atom_ty, max_bond_ty, max_angle_ty, model=model)
+		
+		molfile, LJ_params, bond_params, angle_params, molnames, mass_dict, M_site_dist, extra_types = WMF.water(max_atom_ty, max_bond_ty, max_angle_ty, model=model)
 		dihedral_params = None
 		improper_params = None
+		FF.pair_data['special_bonds'] = 'lj/coul 0.0 0.0 1.0'
+		FF.pair_data['O_type'] = max_atom_ty + 1
+		FF.pair_data['H_type'] = max_atom_ty + 2
+		FF.pair_data['H2O_bond_type'] = max_bond_ty + 1
+		FF.pair_data['H2O_angle_type'] = max_angle_ty + 1
+		FF.pair_data['M_site_dist'] = M_site_dist
 
 	add_LJ_style = LJ_params['style']
 	if add_LJ_style not in FF.pair_data['style']:
@@ -261,32 +341,28 @@ def include_molecule_file(FF, maxIDs, add_molecule):
 		if 'hybrid' not in FF.pair_data['style']:
 			FF.pair_data['style'] = 'hybrid ' + FF.pair_data['style']
 
+	for aty, param in LJ_params.items():
+		if aty not in ('style', 'comments'):
+			FF.pair_data['params'][aty] = param
+			FF.pair_data['comments'][aty] = LJ_params['comments'][aty]
+
 	if bond_params != None:
-		add_bond_styles = set([bond_params[bty]['style'] for bty in bond_params])
-		for ABS in add_bond_styles:
-			if ABS not in FF.bond_data['style']:
-				FF.bond_data['style'] = 'hybrid'
-
+		update_potential(FF.bond_data, bond_params, 'bond_coeff      ')
 	if angle_params != None:
-		add_angle_styles = set([angle_params[aty]['style'] for aty in angle_params])
-		for AAS in add_angle_styles:
-			if AAS not in FF.angle_data['style']:
-				FF.angle_data['style'] = 'hybrid'
-	
+		update_potential(FF.angle_data, angle_params, 'angle_coeff     ')
 	if dihedral_params != None:
-		add_dihedral_styles = set([dihedral_params[dty]['style'] for dty in dihedral_params])
-		for ADS in add_dihedral_styles:
-			if ADS not in FF.dihedral_data['style']:
-				FF.dihedral_data['style'] = 'hybrid'
-	
+		update_potential(FF.dihedral_params, dihedral_params, 'dihedral_coeff  ')
 	if improper_params != None:
-		add_improper_styles = set([improper_params[ity]['style'] for ity in improper_params])
-		for AIS in add_improper_styles:
-			if AIS not in FF.improper_data['style']:
-				FF.improper_data['style'] = 'hybrid'
+		update_potential(FF.improper_data, improper_params, 'improper_coeff  ')
 
-	print(FF.pair_data)
+	infile_add_lines = ['molecule        ' + ' '.join(molnames)]
+	for atom in mass_dict:
+		infile_add_lines.append('mass            ' + str(atom) + ' ' + str(mass_dict[atom]))
+	seed0 = randint(1,10000)
+	seed1 = randint(1,10000)
 
+	if N > 0:
+		create_line = ' '.join([str(N), str(seed0), 'NULL', 'mol', molnames[0], str(seed1), 'units', 'box'])
+		infile_add_lines.append('create_atoms    0 random ' + create_line)
 
-
-
+	return molfile, infile_add_lines, extra_types
