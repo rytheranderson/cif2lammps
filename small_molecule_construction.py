@@ -20,6 +20,9 @@ def add_small_molecules(FF, ff_string):
 	elif ff_string == 'TIP4P':
 		SM_constants = small_molecule_constants.TIP4P
 		FF.pair_data['special_bonds'] = 'lj/coul 0.0 0.0 1.0'
+	elif ff_string == 'Ions':
+		SM_constants = small_molecule_constants.Ions
+		FF.pair_data['special_bonds'] = 'lj/coul 0.0 0.0 1.0'
 	# insert more force fields here if needed
 	else:
 		raise ValueError('the small molecule force field', ff_string, 'is not defined')
@@ -288,10 +291,22 @@ def add_small_molecules(FF, ff_string):
 	FF.angle_data['count'] = (FF.angle_data['count'][0], len(FF.angle_data['params']))
 
 	if 'tip4p' in FF.pair_data['style']:
-		FF.pair_data['O_type'] = maxatomtype_wsm + 1
-		FF.pair_data['H_type'] = maxatomtype_wsm + 2
-		FF.pair_data['H2O_bond_type'] = maxbondtype_wsm + 1
-		FF.pair_data['H2O_angle_type'] = maxangletype_wsm + 1
+
+		for ty,pair in FF.pair_data['comments'].items():
+			fft = pair[0]
+			if fft == 'O_w':
+				FF.pair_data['O_type'] = ty
+			if fft == 'H_w':
+				FF.pair_data['H_type'] = ty
+
+		for ty, bond in FF.bond_data['comments'].items():
+			if sorted(bond) == ['H_w', 'O_w']:
+				FF.pair_data['H2O_bond_type'] = ty
+
+		for ty, angle in FF.angle_data['comments'].items():
+			if angle == ['H_w', 'O_w', 'H_w']:
+				FF.pair_data['H2O_angle_type'] = ty
+				
 		FF.pair_data['M_site_dist'] = 0.1546 # only TIP4P/2005 is implemented 
 
 def update_potential(potential_data, new_potential_params, potential_coeff):

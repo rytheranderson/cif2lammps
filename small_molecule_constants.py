@@ -39,3 +39,13 @@ TIP4P =  {
 		'impropers': None
 	}
 }
+
+Ions =  {
+	'Cl1': {
+		'pair': {'style': 'lj/cut/coul/long', 'vdW': {'Cl_Cl1': (0.22700, 3.51638)}, 'charges': {'Cl_Cl1': -1.0}},
+		'bonds': None,
+		'angles': None,
+		'dihedrals': None,
+		'impropers': None
+	}
+}

@@ -103,7 +103,10 @@ def lammps_inputs(args):
 		N_impropers = 0
 		ty_impropers = None
 
-	suffix = ''.join(cifname.split('/')[-1].split('.')[0:-1]) + '_' + replication
+	if replication != '':
+		suffix = ''.join(cifname.split('/')[-1].split('.')[0:-1]) + '_' + replication
+	else:
+		suffix = ''.join(cifname.split('/')[-1].split('.')[0:-1])
 
 	if sm_file != None:
 
