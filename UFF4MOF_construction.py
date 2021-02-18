@@ -163,7 +163,7 @@ class UFF4MOF(force_field):
 					dist_corner = min(np.abs(angles - 90.0))
 					dist_tetrahedral = min(np.abs(angles - 109.47))
 
-			if 'A' in bond_types and element_symbol != 'O':
+			if 'A' in bond_types and element_symbol not in ('O','H') and element_symbol not in metals:
 				ty = element_symbol + '_' + 'R'
 				hyb = 'resonant'
 			else:

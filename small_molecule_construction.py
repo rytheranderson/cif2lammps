@@ -9,6 +9,7 @@ import write_molecule_files as WMF
 from ase import Atom, Atoms
 from ase import neighborlist
 from ase.geometry import get_distances
+from ase.io import read
 
 mass_key = atomic_data.mass_key
 
@@ -18,17 +19,17 @@ def add_small_molecules(FF, ff_string):
 		SM_constants = small_molecule_constants.TraPPE
 	elif ff_string == 'TIP4P':
 		SM_constants = small_molecule_constants.TIP4P
+		FF.pair_data['special_bonds'] = 'lj/coul 0.0 0.0 1.0'
 	# insert more force fields here if needed
 	else:
 		raise ValueError('the small molecule force field', ff_string, 'is not defined')
 
 	SG = FF.system['graph']
 	SMG = FF.system['SM_graph']
-	sm_bond_cutoff = 1.2
 
-	if len(SMG.edges()) == 0:
+	if len(SMG.nodes()) > 0 and len(SMG.edges()) == 0:
 		
-		print('there are no small molecule bonds in the CIF, calculating based on distance criteria with cutoff ' + str(sm_bond_cutoff) + ' Å...')
+		print('there are no small molecule bonds in the CIF, calculating based on covalent radii...')
 		atoms = Atoms()
 
 		offset = min(SMG.nodes())
@@ -40,7 +41,7 @@ def add_small_molecules(FF, ff_string):
 		atoms.set_cell(FF.system['box'])
 		unit_cell = atoms.get_cell()
 		cutoffs = neighborlist.natural_cutoffs(atoms)
-		NL = neighborlist.NewPrimitiveNeighborList(cutoffs, use_scaled_positions=False, self_interaction=False, skin=0.20) # default atom cutoffs work well
+		NL = neighborlist.NewPrimitiveNeighborList(cutoffs, use_scaled_positions=False, self_interaction=False, skin=0.10) # shorten the cutoff a bit
 		NL.build([True, True, True], unit_cell, atoms.get_positions())
 
 		for i in atoms:
@@ -51,7 +52,6 @@ def add_small_molecules(FF, ff_string):
 
 				bond_length = get_distances(i.position, p2=atoms[j].position, cell=unit_cell, pbc=[True,True,True])
 				bond_length = np.round(bond_length[1][0][0], 3)
-	
 				SMG.add_edge(i.index + offset, j + offset, bond_length=bond_length, bond_order='1.0', bond_type='S')
 
 		NMOL = len(list(nx.connected_components(SMG)))
@@ -232,7 +232,7 @@ def add_small_molecules(FF, ff_string):
 
 			except KeyError:
 				pass
-				
+		
 		# add new angles
 		used_angles = []
 		ty = nangles
@@ -366,3 +366,44 @@ def include_molecule_file(FF, maxIDs, add_molecule):
 		infile_add_lines.append('create_atoms    0 random ' + create_line)
 
 	return molfile, infile_add_lines, extra_types
+
+def read_RASPA_pdb(file):
+
+	with open(file, 'r') as pdb:
+		pdb = pdb.read()
+		pdb = pdb.split('\n')
+
+	atoms = Atoms()
+	for line in pdb:
+		s = line.split()
+		if len(s) > 0 and s[0] == 'ATOM':
+			atoms.append(Atom(s[2], np.array([float(c) for c in s[4:7]])))
+
+	return atoms
+
+def read_small_molecule_file(sm_file, system):
+
+	fm = sm_file.split('.')[-1]
+	max_ind = max(system['graph'])
+	ind = max_ind + 1
+
+	if fm not in ('pdb', 'xyz', 'cif'):
+		raise ValueError('only xyz and RASPA pdb formats are supported for small molecule files')
+
+	if fm == 'pdb':
+		print('assuming small molecule file is in RASPA pdb format, if not, too bad...')
+		atoms = read_RASPA_pdb(sm_file)
+	else:
+		atoms = read(sm_file, format=fm)
+
+	atoms.set_cell(system['box'])
+	SMG = nx.Graph()
+
+	for atom in atoms:
+		
+		SMG.add_node(ind, element_symbol=atom.symbol, mol_flag='1', index=ind, force_field_type='', cartesian_position=atom.position, 
+					 fractional_position=atom.scaled_position, charge=0.0, replication=np.array([0.0,0.0,0.0]), duplicated_version_of=None)
+
+		ind += 1
+
+	system['SM_graph'] = nx.compose(SMG, system['SM_graph']) # don't want to overwrite extra framework species already in the cif

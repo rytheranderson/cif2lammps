@@ -608,6 +608,10 @@ def replication_determination(system, replication, cutoff):
 
 		pass
 
+	elif replication == '':
+
+		pass
+
 	else:
 
 		raise ValueError('The replication command is not recognized')

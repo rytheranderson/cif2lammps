@@ -1,12 +1,13 @@
 from __future__ import print_function
 from cif2system import initialize_system, replication_determination, write_cif_from_system
-from small_molecule_construction import add_small_molecules, include_molecule_file
+from small_molecule_construction import add_small_molecules, include_molecule_file, read_small_molecule_file
 import atomic_data
 import os
 import numpy as np
 import datetime
 import math
 import warnings
+import networkx as nx
 from ase import Atoms, Atom
 from ase.io import write
 from itertools import combinations
@@ -40,7 +41,7 @@ def isfloat(value):
 
 def lammps_inputs(args):
 
-	cifname, force_field, ff_string, sm_ff_string, outdir, charges, replication, read_pymatgen, add_molecule = args
+	cifname, force_field, ff_string, sm_ff_string, outdir, charges, replication, read_pymatgen, add_molecule, sm_file = args
 
 	# add more forcefields here as they are created
 	if ff_string == 'UFF4MOF':
@@ -65,10 +66,13 @@ def lammps_inputs(args):
 		mixing_rules='shift yes mix arithmetic'
 
 	system = initialize_system(cifname, charges=charges, read_pymatgen=read_pymatgen)
+
+	if sm_file != None:
+		direc = cifname.split(os.sep)[0]
+		read_small_molecule_file(direc + os.sep + sm_file, system)
+
 	print('system initialized...')
 	system, replication = replication_determination(system, replication, cutoff)
-
-	write_cif_from_system(system, 'check.cif')
 
 	FF = force_field(system, cutoff, FF_args)
 	FF.compile_force_field(charges=charges)
@@ -79,6 +83,7 @@ def lammps_inputs(args):
 		if len(FF.system['SM_graph'].nodes()) != 0:
 			warnings.warn('extra-framework molecules detected, but no small molecule force field is specified!')
 
+	#write_cif_from_system(system, 'check.cif')
 	first_line = "Created by Ryther's code on " + str(datetime.datetime.now())
 
 	SG = FF.system['graph']
@@ -98,7 +103,12 @@ def lammps_inputs(args):
 		N_impropers = 0
 		ty_impropers = None
 
-	suffix = cifname.split('/')[-1].split('.')[0] + '_' + replication
+	suffix = ''.join(cifname.split('/')[-1].split('.')[0:-1]) + '_' + replication
+
+	if sm_file != None:
+
+		NM = len(list(nx.connected_components(system['SM_graph'])))
+		suffix += str(NM)
 
 	maxIDs = (ty_atoms, ty_bonds, ty_angles, ty_dihedrals, ty_impropers)
 	if add_molecule != None:
@@ -306,7 +316,7 @@ def lammps_inputs(args):
 		total_charge = 0.0
 
 		for a in SG.nodes(data=True):
-			
+					
 			atom_data = a[1]
 			index = a[0]
 			force_field_type = atom_data['force_field_type']
@@ -548,7 +558,11 @@ def lammps_inputs(args):
 			else:
 				if sm_ff_string == 'TIP4P':
 					group_line = 'group           H2O type ' + str(FF.pair_data['O_type']) + ' ' + str(FF.pair_data['H_type']) + '\n'
-					shake_line = 'fix             H2O_shake H2O shake 0.0001 50 0 b ' + str(FF.pair_data['H2O_bond_type']) + ' a ' + str(FF.pair_data['H2O_angle_type']) + ' mol H2O_mol\n'
+					shake_line = 'fix             H2O_shake H2O shake 0.0001 50 0 b ' + \
+												  str(FF.pair_data['H2O_bond_type']) + ' a ' + \
+												  str(FF.pair_data['H2O_angle_type']) + ' t '  + \
+												  str(FF.pair_data['O_type']) + ' ' + \
+												  str(FF.pair_data['H_type']) + '\n'
 					infile.write(group_line)
 					infile.write(shake_line)
 

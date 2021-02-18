@@ -32,7 +32,7 @@ TIP4P =  {
 		'impropers': None
 	},
 	'Cl1': {
-		'pair': {'style': 'lj/cut/tip4p/cut', 'vdW': {'Cl_Cl1': (0.22700, 3.51638)}, 'charges': {'Cl_Cl1': -1.0}},
+		'pair': {'style': 'lj/cut/tip4p/long', 'vdW': {'Cl_Cl1': (0.22700, 3.51638)}, 'charges': {'Cl_Cl1': -1.0}},
 		'bonds': None,
 		'angles': None,
 		'dihedrals': None,
