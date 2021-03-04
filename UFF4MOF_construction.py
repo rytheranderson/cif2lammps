@@ -191,7 +191,7 @@ class UFF4MOF(force_field):
 								ty = element_symbol + '_' + str(len(nbors))
 								hyb = 'sp' + str(len(nbors))
 						else:
-							ty = 'N_2'
+							ty = 'N_3'
 					elif element_symbol == 'P':
 						if dist_square < dist_tetrahedral:
 							ty = 'P_3+3'

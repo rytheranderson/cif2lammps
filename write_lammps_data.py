@@ -490,9 +490,9 @@ def lammps_inputs(args):
 
 		# use ewald summation for long range solver unless using pair_style lj/cut/tip4p/long
 		if charges or ('coul' in pair_style and 'tip4p' not in pair_style):
-			infile.write('kspace_style    ewald 1.0e-5\n')
+			infile.write('kspace_style    ewald 1.0e-4\n')
 		elif 'tip4p/long' in pair_style:
-			infile.write('kspace_style    pppm/tip4p 1.0e-5\n')
+			infile.write('kspace_style    pppm/tip4p 1.0e-4\n')
 
 		if 'hybrid' in pair_style:
 

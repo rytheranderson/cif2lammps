@@ -11,9 +11,9 @@ def test_run():
 
 	optional_arguments = {'force_field':UFF4MOF, 
 					  'ff_string':'UFF4MOF', 
-					  'small_molecule_force_field':'TIP4P', 
+					  'small_molecule_force_field':None, 
 					  'charges':False,
-					  'replication':'', 
+					  'replication':'cutoff', 
 					  'read_cifs_pymatgen':False,
 					  'add_molecule':None,
 					  'small_molecule_file':None}
@@ -71,6 +71,6 @@ def multiple_sm_loadings(direc):
 
 if __name__ == '__main__':
 
-	test_run()
-	#multiple_sm_loadings('unopt_cifs')
+	#test_run()
+	multiple_sm_loadings('unopt_cifs')
 	pass
