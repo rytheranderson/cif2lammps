@@ -10,6 +10,8 @@ import functools
 from random import choice
 import warnings
 
+from numpy.linalg import norm, inv
+
 metals = atomic_data.metals
 mass_key = atomic_data.mass_key
 
@@ -75,7 +77,7 @@ def PBC3DF_sym(vec1, vec2):
 
 	return ndist, sym
 
-def cif_read(filename, charges=False):
+def cif_read(filename, charges=False, add_Zr_bonds=False):
 
 	with open(filename,'r') as f:
 		f = f.read()
@@ -150,6 +152,28 @@ def cif_read(filename, charges=False):
 
 	remove_net = choice(range(len(charge_list)))
 	charge_list[remove_net] -= net_charge
+
+	if add_Zr_bonds:
+		count = 0
+		for i in range(len(elems)):
+			for j in range(i + 1, len(elems)):
+
+				elemi = elems[i]
+				elemj = elems[j]
+
+				if elemi == 'Zr' and elemj == 'Zr':
+
+					ivec = fcoords[i]
+					jvec = fcoords[j]
+
+					dist = PBC3DF_sym(ivec, jvec)[0]
+					dist = norm(np.dot(unit_cell, dist))
+
+					if dist < 4.5:
+						count += 1
+						bonds.append([names[i], names[j], '.', 'S', np.round(dist,3)])
+
+		print(count, 'Zr-Zr bonds added...')
 
 	return elems, names, ccoords, fcoords, charge_list, bonds, (a,b,c,alpha,beta,gamma), unit_cell
 
@@ -361,7 +385,7 @@ def duplicate_system(system, replications, small_molecule_cutoff=10):
 		data['cartesian_position'] = np.dot(unit_cell, data['fractional_position'])
 
 	for n0, n1, edge_data in G.edges(data=True):
-		
+
 		sym_code = edge_data['sym_code']
 		bond_type = edge_data['bond_type']
 		length = edge_data['length']

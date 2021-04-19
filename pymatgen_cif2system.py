@@ -237,8 +237,8 @@ def cif_read_pymatgen(filename, charges=False, coplanarity_tolerance=0.1):
 				bond_orders.append(bond_order)
 				edge_data['bond_type'] = bond_types[bond_order]
 
-			all_cycles = nx.simple_cycles(nx.to_directed(SG))
-			all_cycles = set([tuple(sorted(cy)) for cy in all_cycles if len(cy) > 4])
+		all_cycles = nx.simple_cycles(nx.to_directed(SG))
+		all_cycles = set([tuple(sorted(cy)) for cy in all_cycles if len(cy) > 4])
 
 		### assign aromatic bond orders as 1.5 (in most cases they will be already)
 		for cycle in all_cycles:

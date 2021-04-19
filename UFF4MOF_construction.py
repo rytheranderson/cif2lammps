@@ -225,8 +225,11 @@ class UFF4MOF(force_field):
 							ty = 'O_2_M'
 							hyb = 'sp2'
 						# 2 connected oxygens bonded to metals
-						elif len(nbors) == 2 and len([i for i in nbor_symbols if i in metals]) > 1:
+						elif len(nbors) == 2 and len([i for i in nbor_symbols if i in metals]) == 1:
 							ty = 'O_3'
+							hyb = 'sp2'
+						elif len(nbors) == 2 and len([i for i in nbor_symbols if i in metals]) == 2:
+							ty = 'O_2_z'
 							hyb = 'sp2'
 						# 3 connected oxygens bonded to metals
 						elif len(nbors) == 3 and len([i for i in nbor_symbols if i in metals]) > 1:
@@ -347,7 +350,7 @@ class UFF4MOF(force_field):
 						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
 
 					# highly connected metals (max of 12 neighbors)
-					elif 7 <= len(nbors) <= 12:
+					elif 7 <= len(nbors) <= 14:
 						options = ['8f4']
 						ty = typing_loop(options, add_symbol, UFF4MOF_atom_parameters)
 
@@ -399,6 +402,9 @@ class UFF4MOF(force_field):
 		i,j = bond
 		params_i = UFF4MOF_atom_parameters[i]
 		params_j = UFF4MOF_atom_parameters[j]
+
+		if i == 'Zr8f4' and j == 'Zr8f4':
+			return ('zero', 'nocoeff')
 
 		r0_i, theta0_i, x1_i, D1_i, zeta_i, Z1_i, V_i, X_i = params_i
 		r0_j, theta0_j, x1_j, D1_j, zeta_j, Z1_j, V_j, X_j = params_j
@@ -581,7 +587,7 @@ class UFF4MOF(force_field):
 		# determine style and special bonds
 		if charges:
 			style = 'lj/cut/coul/long'
-			sb = 'lj/coul 0.0 0.0 1.0'
+			sb = 'lj 0.0 0.0 1.0 coul 0.0 0.0 0.0'
 		else:
 			style = 'lj/cut'
 			sb = 'lj 0.0 0.0 1.0'
@@ -643,6 +649,7 @@ class UFF4MOF(force_field):
 		all_bonds = {}
 		ID = 0
 		count = 0
+		styles = []
 		# index bonds by ID
 		for b in bonds:
 
@@ -650,12 +657,19 @@ class UFF4MOF(force_field):
 			bond_order = b[2]
 			bond = (b[0], b[1])
 			params = self.bond_parameters(bond, float(bond_order))
+			styles.append(params[0])
 			bond_params[ID] = list(params)
 			bond_comments[ID] = list(bond) + ['bond order=' + str(bond_order)]
 			all_bonds[ID] = bonds[b]
 			count += len(bonds[b])
 
-		self.bond_data = {'all_bonds':all_bonds, 'params':bond_params, 'style':'harmonic', 'count':(count, len(all_bonds)), 'comments':bond_comments}
+		styles = set(styles)
+		if len(styles) == 1:
+			style = list(styles)[0]
+		else:
+			style = 'hybrid ' + ' '.join(styles)
+
+		self.bond_data = {'all_bonds':all_bonds, 'params':bond_params, 'style':style, 'count':(count, len(all_bonds)), 'comments':bond_comments}
 
 	def enumerate_angles(self):
 		
@@ -693,8 +707,11 @@ class UFF4MOF(force_field):
 				except KeyError:
 					bond_type_jk = inv_bonds[(k,j)]
 
-				r_ij = bond_params[bond_type_ij][2]
-				r_jk = bond_params[bond_type_jk][2]
+				try:
+					r_ij = bond_params[bond_type_ij][2]
+					r_jk = bond_params[bond_type_jk][2]
+				except IndexError:
+					continue
 
 				angle = sorted((fft_i, fft_k))
 				sorted_rs = sorted((r_ij, r_jk))
