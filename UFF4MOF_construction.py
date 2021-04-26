@@ -26,7 +26,6 @@ comparison_geometries = {
 							  [ 0.0, 0.0, 0.0]])
 }
 
-
 def superimpose(a0, a1, count, max_permute=6):
 	
 	S = SVDSuperimposer()
