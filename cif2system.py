@@ -33,10 +33,10 @@ def GCD_List(list):
     return functools.reduce(GCD, list)
 
 def nn(string):
-    return re.sub('[^a-zA-Z]','', string)
+    return re.sub('[^a-zA-Z]', '', string)
 
 def nl(string):
-    return re.sub('[^0-9]','', string)
+    return re.sub('[^0-9]', '', string)
 
 def isfloat(value):
     """
@@ -79,7 +79,7 @@ def PBC3DF_sym(vec1, vec2):
 
 def cif_read(filename, charges=False, add_Zr_bonds=False):
 
-    with open(filename,'r') as f:
+    with open(filename, 'r') as f:
         f = f.read()
         f = filter(None, f.split('\n'))
 
@@ -229,10 +229,10 @@ def initialize_system(filename, charges=False, small_molecule_cutoff=5, read_pym
             data['bond_type'] = 'A'
 
         # nitro nitrogens should have aromatic bonds with O
-        if es0 == 'N' and es1 == 'O' and sorted(nbors0_symbols) == ['C','O','O']:
+        if es0 == 'N' and es1 == 'O' and sorted(nbors0_symbols) == ['C', 'O', 'O']:
             print_flag = True
             data['bond_type'] = 'A'
-        if es1 == 'N' and es0 == 'O' and sorted(nbors1_symbols) == ['C','O','O']:
+        if es1 == 'N' and es0 == 'O' and sorted(nbors1_symbols) == ['C', 'O', 'O']:
             print_flag = True
             data['bond_type'] = 'A'
 

@@ -24,10 +24,10 @@ def water(last_atom_ID, last_bond_ID, last_angle_ID, model='TIP4P_cutoff'):
 
     LJ_dict = {
     # LAMMPS has a special TIP4P pair_style that automatically adds the M site
-    'TIP4P_cutoff': {ID_O: ('lj/cut/tip4p/cut' , 0.15500, 3.15360), ID_H: ('lj/cut/tip4p/cut' , 0.0, 0.0), 'style': 'lj/cut/tip4p/cut' , 'comments': {ID_O:['O_water','O_water'], ID_H:['H_water','H_water']}},
-    'TIP4P_2005':   {ID_O: ('lj/cut/tip4p/long', 0.18520, 3.15890), ID_H: ('lj/cut/tip4p/long', 0.0, 0.0), 'style': 'lj/cut/tip4p/long', 'comments': {ID_O:['O_water','O_water'], ID_H:['H_water','H_water']}},
-    'TIP4P_long':   {ID_O: ('lj/cut/tip4p/long', 0.16275, 3.16435), ID_H: ('lj/cut/tip4p/long', 0.0, 0.0), 'style': 'lj/cut/tip4p/long', 'comments': {ID_O:['O_water','O_water'], ID_H:['H_water','H_water']}},
-    'TIP3P_long':   {ID_O: ('lj/cut/coul/long' , 0.10200, 3.18800), ID_H: ('lj/cut/coul/long' , 0.0, 0.0), 'style': 'lj/cut/coul/long' , 'comments': {ID_O:['O_water','O_water'], ID_H:['H_water','H_water']}}
+    'TIP4P_cutoff': {ID_O: ('lj/cut/tip4p/cut' , 0.15500, 3.15360), ID_H: ('lj/cut/tip4p/cut' , 0.0, 0.0), 'style': 'lj/cut/tip4p/cut' , 'comments': {ID_O:['O_water', 'O_water'], ID_H:['H_water', 'H_water']}},
+    'TIP4P_2005':   {ID_O: ('lj/cut/tip4p/long', 0.18520, 3.15890), ID_H: ('lj/cut/tip4p/long', 0.0, 0.0), 'style': 'lj/cut/tip4p/long', 'comments': {ID_O:['O_water', 'O_water'], ID_H:['H_water', 'H_water']}},
+    'TIP4P_long':   {ID_O: ('lj/cut/tip4p/long', 0.16275, 3.16435), ID_H: ('lj/cut/tip4p/long', 0.0, 0.0), 'style': 'lj/cut/tip4p/long', 'comments': {ID_O:['O_water', 'O_water'], ID_H:['H_water', 'H_water']}},
+    'TIP3P_long':   {ID_O: ('lj/cut/coul/long' , 0.10200, 3.18800), ID_H: ('lj/cut/coul/long' , 0.0, 0.0), 'style': 'lj/cut/coul/long' , 'comments': {ID_O:['O_water', 'O_water'], ID_H:['H_water', 'H_water']}}
     }
 
     bond_dict = {
@@ -142,7 +142,7 @@ Angles
 1    {AT} 2 1 3""".format(**locals())).strip()
 
     mass_dict = {ID_O:15.9994, ID_H:1.00794}
-    molnames = ('H2O_mol','H2O.txt')
+    molnames = ('H2O_mol', 'H2O.txt')
 
     extra_types = (2,1,1,None,None)
 

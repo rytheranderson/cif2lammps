@@ -260,13 +260,13 @@ class UFF(force_field):
             n = 6.0
             V = 2.0
             # case (i) 
-            if hyb_j == 'sp3' and els_j in ('O','S'):
+            if hyb_j == 'sp3' and els_j in ('O', 'S'):
                 phi0 = 180.0
                 n = 2.0
                 U_j = UFF_atom_parameters[fft_j][6]
                 U_k = UFF_atom_parameters[fft_k][6]
                 V = 5 * np.sqrt(U_j*U_k) * (1.0 + 4.18 * np.log(bond_order))
-            elif hyb_k == 'sp3' and els_k in ('O','S'):
+            elif hyb_k == 'sp3' and els_k in ('O', 'S'):
                 phi0 = 180.0
                 n = 2.0
                 U_j = UFF_atom_parameters[fft_j][6]

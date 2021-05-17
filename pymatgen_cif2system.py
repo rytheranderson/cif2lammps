@@ -44,7 +44,7 @@ PT = ['H' , 'He', 'Li', 'Be', 'B' , 'C' , 'N' , 'O' , 'F' , 'Ne', 'Na', 'Mg', 'A
       'Pa', 'U' , 'Np', 'Pu', 'Am', 'Cm', 'Bk', 'Cf', 'Es', 'Fm', 'Md', 'No', 'Lr', 'FG', 'X' ]
 
 def nl(string):
-    return re.sub('[^0-9]','', string)
+    return re.sub('[^0-9]', '', string)
 
 def flatten(L):
     return list(chain(*L))
@@ -62,15 +62,15 @@ def read_cif(self):
 
 def cif_read_pymatgen(filename, charges=False, coplanarity_tolerance=0.1):
 
-    valencies = {'C':4.0,'Si':4.0,'Ge':4.0,'N':3.0,
-                 'P':3.0,'As':3.0,'Sb':3.0,'O':2.0,
-                 'S':2.0,'Se':2.0,'Te':2.0,'F':1.0,
-                 'Cl':1.0,'Br':1.0,'I':1.0,'H':1.0,
+    valencies = {'C':4.0, 'Si':4.0, 'Ge':4.0, 'N':3.0,
+                 'P':3.0, 'As':3.0, 'Sb':3.0, 'O':2.0,
+                 'S':2.0, 'Se':2.0, 'Te':2.0, 'F':1.0,
+                 'Cl':1.0, 'Br':1.0, 'I':1.0, 'H':1.0,
                  'X':1.0}
 
     bond_types = {0.5:'S', 1.0:'S', 1.5:'A', 2.0:'D', 3.0:'T'}
 
-    with open(filename,'r') as f:
+    with open(filename, 'r') as f:
         f = f.read()
         f = filter(None, f.split('\n'))
 
@@ -96,8 +96,8 @@ def cif_read_pymatgen(filename, charges=False, coplanarity_tolerance=0.1):
     unit_cell = atoms.get_cell()
     inv_uc = inv(unit_cell.T)
     elements = atoms.get_chemical_symbols()
-    small_skin_metals = ('Ce','Pr','Nd','Pm','Sm','Eu','Gd','Tb','Dy','Ho','Er','Tm','Yb','Lu',
-                         'Ba','La')
+    small_skin_metals = ('Ce', 'Pr', 'Nd', 'Pm', 'Sm', 'Eu', 'Gd', 'Tb', 'Dy', 'Ho', 'Er', 'Tm', 'Yb', 'Lu',
+                         'Ba', 'La')
 
     if any(i in elements for i in ('Zn')):
         skin = 0.30
@@ -112,7 +112,7 @@ def cif_read_pymatgen(filename, charges=False, coplanarity_tolerance=0.1):
         charge_list = [0.0 for a in atoms]
 
     cutoffs = neighborlist.natural_cutoffs(atoms)
-    NL = neighborlist.NewPrimitiveNeighborList(cutoffs, use_scaled_positions=False, self_interaction=False, skin=skin) # default atom cutoffs work well
+    NL = neighborlist.NewPrimitiveNeighborList(cutoffs, use_scaled_positions=False, self_interaction=False, skin=skin)  # default atom cutoffs work well
     NL.build([True, True, True], unit_cell, atoms.get_positions())
     
     G = nx.Graph()

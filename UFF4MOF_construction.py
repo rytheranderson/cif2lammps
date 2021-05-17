@@ -15,19 +15,20 @@ mass_key = atomic_data.mass_key
 
 comparison_geometries = {
 
-    'square_planar' : np.array([[ 1.0, 0.0, 0.0],
-                                [-1.0, 0.0, 0.0],
-                                [ 0.0, 1.0, 0.0],
-                                [ 0.0,-1.0, 0.0]]),
+    'square_planar': np.array([[ 1.0, 0.0, 0.0],
+                               [-1.0, 0.0, 0.0],
+                               [ 0.0, 1.0, 0.0],
+                               [ 0.0,-1.0, 0.0]]),
 
-    'tetrahedral' : np.array([[ 1.0, 1.0, 0.0],
-                              [ 1.0, 0.0, 1.0],
-                              [ 0.0, 1.0, 1.0],
-                              [ 0.0, 0.0, 0.0]])
+    'tetrahedral': np.array([[ 1.0, 1.0, 0.0],
+                             [ 1.0, 0.0, 1.0],
+                             [ 0.0, 1.0, 1.0],
+                             [ 0.0, 0.0, 0.0]])
 }
 
+
 def superimpose(a0, a1, count, max_permute=6):
-    
+
     S = SVDSuperimposer()
 
     a0 = np.asarray(a0)
@@ -43,7 +44,7 @@ def superimpose(a0, a1, count, max_permute=6):
     looper = list(permutations(a0))[0:max_permute]
 
     for l in looper:
-        
+
         p = np.asarray(l)
         S.set(a1,p)
         S.run()
@@ -55,15 +56,16 @@ def superimpose(a0, a1, count, max_permute=6):
 
     return min_msd[0]
 
+
 def typing_loop(options, add, atom_type_dict):
 
     """
         types atoms in ambiguous cases, options should be ordered correctly
     """
-    
+
     ty = None
     for option in options:
-        
+
         try:
             ty = atom_type_dict[add + option]
             break
@@ -75,6 +77,7 @@ def typing_loop(options, add, atom_type_dict):
         return add + option
     else:
         return None
+
 
 class UFF4MOF(force_field):
 
@@ -105,7 +108,7 @@ class UFF4MOF(force_field):
         count = 0
 
         for atom in SG.nodes(data=True):
-            
+
             ty = None
             name, inf = atom
             element_symbol = inf['element_symbol']
@@ -120,41 +123,40 @@ class UFF4MOF(force_field):
                 if (element_symbol in metals and len(nbors) == 4):
 
                     count += 1
-                    
+
                     comp_coords = []
                     for n in nbors:
-    
+
                         dist_n, sym_n = PBC3DF_sym(SG.nodes[n]['fractional_position'], inf['fractional_position'])
                         dist_n = np.dot(self.unit_cell, dist_n)
                         fcoord = SG.nodes[n]['fractional_position'] + sym_n
                         comp_coords.append(np.dot(self.unit_cell, fcoord))
-    
+
                     comp_coords = np.array(comp_coords)
                     dist_square = superimpose(comp_coords, comparison_geometries['square_planar'], count)
                     dist_tetrahedral = superimpose(comp_coords, comparison_geometries['tetrahedral'], count)
 
                 else:
-                    
+
                     angles = []
                     for n0,n1 in itertools.combinations(nbors, 2):
-                    
+
                         dist_j, sym_j = PBC3DF_sym(SG.nodes[n0]['fractional_position'], inf['fractional_position'])
                         dist_k, sym_k = PBC3DF_sym(SG.nodes[n1]['fractional_position'], inf['fractional_position'])
-                            
+
                         dist_j = np.dot(self.unit_cell, dist_j)
-                        dist_k = np.dot(self.unit_cell, dist_k)
-                        
+
                         cosine_angle = np.dot(dist_j, dist_k) / (np.linalg.norm(dist_j) * np.linalg.norm(dist_k))
-                    
+
                         if cosine_angle > 1:
                             cosine_angle = 1
                         elif cosine_angle < -1:
                             cosine_angle = -1
-                    
+
                         ang = (180.0/np.pi) * np.arccos(cosine_angle)
-                    
+
                         angles.append(ang)
-                    
+
                     angles = np.array(angles)
                     dist_linear = min(np.abs(angles - 180.0))
                     dist_triangle = min(np.abs(angles - 120.0))
@@ -162,7 +164,7 @@ class UFF4MOF(force_field):
                     dist_corner = min(np.abs(angles - 90.0))
                     dist_tetrahedral = min(np.abs(angles - 109.47))
 
-            if 'A' in bond_types and element_symbol not in ('O','H') and element_symbol not in metals:
+            if 'A' in bond_types and element_symbol not in ('O', 'H') and element_symbol not in metals:
                 ty = element_symbol + '_' + 'R'
                 hyb = 'resonant'
             else:
@@ -183,7 +185,7 @@ class UFF4MOF(force_field):
                     if element_symbol == 'N':
                         if len(nbors) < 4:
                             # special case for -NO2
-                            if sorted(nbor_symbols) == ['C','O','O']:
+                            if sorted(nbor_symbols) == ['C', 'O', 'O']:
                                 ty = element_symbol + '_R'
                                 hyb = 'sp2'
                             else:
@@ -233,15 +235,15 @@ class UFF4MOF(force_field):
                         # 3 connected oxygens bonded to metals
                         elif len(nbors) == 3 and len([i for i in nbor_symbols if i in metals]) > 1:
                             # trigonal geometry
-                            if dist_triangle < dist_tetrahedral and not any(i in ['Zr','Eu','Tb','U'] for i in nbor_symbols):
+                            if dist_triangle < dist_tetrahedral and not any(i in ['Zr', 'Eu', 'Tb', 'U'] for i in nbor_symbols):
                                 ty = 'O_2_z'
                                 hyb = 'sp2'
                             # sometimes oxygens in Zr6 and analagous nodes can have near trigonal geometry, still want O_3_f, however
-                            elif dist_triangle < dist_tetrahedral and any(i in ['Zr','Eu','Tb','U'] for i in nbor_symbols):
+                            elif dist_triangle < dist_tetrahedral and any(i in ['Zr', 'Eu', 'Tb', 'U'] for i in nbor_symbols):
                                 ty = 'O_3_f'
                                 hyb = 'sp2'
                             # tetrahedral-like geometry
-                            elif dist_tetrahedral < dist_triangle and any(i in ['Zr','Eu','Tb','U'] for i in nbor_symbols):
+                            elif dist_tetrahedral < dist_triangle and any(i in ['Zr', 'Eu', 'Tb', 'U'] for i in nbor_symbols):
                                 ty = 'O_3_f'
                                 hyb = 'sp3'
                         # 4 connected oxygens bonded to metals
@@ -520,13 +522,13 @@ class UFF4MOF(force_field):
             n = 6.0
             V = 2.0
             # case (i) 
-            if hyb_j == 'sp3' and els_j in ('O','S'):
+            if hyb_j == 'sp3' and els_j in ('O', 'S'):
                 phi0 = 180.0
                 n = 2.0
                 U_j = UFF4MOF_atom_parameters[fft_j][6]
                 U_k = UFF4MOF_atom_parameters[fft_k][6]
                 V = 5 * np.sqrt(U_j*U_k) * (1.0 + 4.18 * np.log(bond_order))
-            elif hyb_k == 'sp3' and els_k in ('O','S'):
+            elif hyb_k == 'sp3' and els_k in ('O', 'S'):
                 phi0 = 180.0
                 n = 2.0
                 U_j = UFF4MOF_atom_parameters[fft_j][6]

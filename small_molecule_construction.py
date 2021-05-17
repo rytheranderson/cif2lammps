@@ -350,7 +350,7 @@ def include_molecule_file(FF, maxIDs, add_molecule):
     max_atom_ty, max_bond_ty, max_angle_ty, max_dihedral_ty, max_improper_ty = maxIDs
     molname, model, N = add_molecule
 
-    if molname in ('water','Water','H2O','h2o'):
+    if molname in ('water', 'Water', 'H2O', 'h2o'):
         
         molfile, LJ_params, bond_params, angle_params, molnames, mass_dict, M_site_dist, extra_types = WMF.water(max_atom_ty, max_bond_ty, max_angle_ty, model=model)
         dihedral_params = None

@@ -362,7 +362,7 @@ class ZIFFF(force_field):
         self.system = system
         self.cutoff = cutoff
         self.args = args
-        self.ZIFFF_types = ('C1','C2','C3','N','Zn','H2','H3')
+        self.ZIFFF_types = ('C1', 'C2', 'C3', 'N', 'Zn', 'H2', 'H3')
 
     def type_atoms(self):
 
@@ -374,7 +374,7 @@ class ZIFFF(force_field):
 
             element_symbol = data['element_symbol']
 
-            if element_symbol in ('Zn','Cd'):
+            if element_symbol in ('Zn', 'Cd'):
                 nborhood = list(nx.ego_graph(SG, atom, radius=2))
                 imidazolate_ring_atoms.extend(nborhood)
 
@@ -437,7 +437,7 @@ class ZIFFF(force_field):
                 if element_symbol != 'H':
                     if name not in imidazolate_ring_atoms and any(n in imidazolate_ring_atoms for n in nbors):
                         # special case for ZIF-8 -CH3 group which has an explicit type in ZIF-FF
-                        if element_symbol == 'C' and sorted(nbor_symbols) == ['C','H','H','H'] and 'C1' in nbor_symbols:
+                        if element_symbol == 'C' and sorted(nbor_symbols) == ['C', 'H', 'H', 'H'] and 'C1' in nbor_symbols:
                             ty = 'C1'
                             hyb = 'sp3'
                         # other functionalizations are typed for GAFF
@@ -616,7 +616,7 @@ class ZIFFF(force_field):
                                   (l,j,i,k), 
                                   (l,j,i,k)]
 
-                if i in ('c','ca','n','n2','na'):
+                if i in ('c', 'ca', 'n', 'n2', 'na'):
                     
                     ximps = [('X',k,i,l),
                              ('X',l,i,k),
@@ -624,12 +624,12 @@ class ZIFFF(force_field):
                              ('X',l,i,j),
                              ('X',j,i,k),
                              ('X',j,i,k),
-                             ('X','X',i,l),
-                             ('X','X',i,k),
-                             ('X','X',i,l),
-                             ('X','X',i,j),
-                             ('X','X',i,k),
-                             ('X','X',i,k)]
+                             ('X', 'X',i,l),
+                             ('X', 'X',i,k),
+                             ('X', 'X',i,l),
+                             ('X', 'X',i,j),
+                             ('X', 'X',i,k),
+                             ('X', 'X',i,k)]
 
                     improper_combs.extend(ximps)
 
