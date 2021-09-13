@@ -7,7 +7,7 @@
 cif2lammps is a Python 2 or 3 program used to convert crystals (developed initially for metal-organic frameworks) to Large-scale Atomic Molecular Massively Parallel Simulator (LAMMPS) format. 
 
 ## Current Status
-cif2lammps can be used to convert ToBaCCo (https://github.com/tobacco-mofs/tobacco_3.0) generated and most other cifs to LAMMPS data. Currently the generic force fields UFF, UFF4MOF, and Dreiding are implemented.
+cif2lammps can be used to convert ToBaCCo (https://github.com/tobacco-mofs/tobacco_3.0) generated and most other cifs to LAMMPS data. Currently, the generic force fields UFF, UFF4MOF, and Dreiding are implemented.
 The MZHB (zeolite specific) and ZIF-FF (ZIF specific) force fields are also available. ZIF-FF uses the Generalized Amber Force Field (GAFF) for interactions
 not explicitly parameterized, so there is also a preliminary version of GAFF for use with ZIF-FF (which does not include all the atom types seen in GAFF). 
 UFF4MOF has the most robust atom typing functionality, based on connectivity and geometry. More force fields and the option to use custom force fields will be added. 
@@ -18,7 +18,7 @@ Generally speaking just run:
 ```
 python main_conversion.py --cifs directory_of_cifs
 ```
-where "directory_of_cifs" is a directory with the cifs you want to convert. By default this will convert the cifs serially and add the data and in files to a new directory called unopt_lammps_data. The options currently are:
+where "directory_of_cifs" is a directory with the cifs you want to convert. By default, this will convert the cifs serially and add the data and in files to a new directory called unopt_lammps_data. The options currently are:
 ```
 --parallel
 ```
@@ -26,12 +26,7 @@ This switches ON parallel conversion.
 ```
 --force_field UFF4MOF
 ```
-Determines the force field to be used. The generic force fields UFF, UFF4MOF, and Dreiding are available (UFF4MOF has the most robust atom typing).
-The MZHB (zeolite specific) and ZIFFF (ZIF specific) force fields are also available. Note that ZIFFF requires the Generalized Amber Force Field (GAFF) to be used
-for all interactions not explicitly parameterized. Therefore, I have implemented a preliminary version of GAFF usueable with ZIF-FF. This preliminary version
-does not cover all carbon, nitrogen, hydrogen, or sulphur atom types available in GAFF (requires complex typing given the diversity of types for these elements in GAFF).
-In addition GAFF expects all atoms to have partial charges assigned using HF/6-31g* RESP, so add these to the CIF before using my ZIF-FF implementation
-(except for the case of ZIF-8, for which charges can be automatically assigned).
+Determines the force field to be used. The generic force fields UFF, UFF4MOF, and Dreiding are available (UFF4MOF has the most robust atom typing). The MZHB (zeolite specific) and ZIFFF (ZIF specific) force fields are also available. Note that ZIFFF requires the Generalized Amber Force Field (GAFF) to be used for all interactions not explicitly parameterized. Therefore, I have implemented a preliminary version of GAFF useable with ZIF-FF. This preliminary version does not cover all carbon, nitrogen, hydrogen, or sulfur atom types available in GAFF (requires complex typing given the diversity of types for these elements in GAFF). In addition, GAFF expects all atoms to have partial charges assigned using HF/6-31g* RESP, so add these to the CIF before using my ZIF-FF implementation (except for the case of ZIF-8, for which charges can be automatically assigned).
 ```
 --small_molecule_force_field TraPPE
 ```
@@ -55,7 +50,7 @@ Switches ON reading the inputs CIFs using pymatgen i/o. This can be used to read
 Keep in mind that this might not work as expected in all cases. Bonds are typed in this scheme according to length, which also may not work as expected (use with caution).
 
 ## Requirements
-Just download Anaconda. This should work for Python 2 or Python 3. If you intend to use the --read_cif_pymatgen option you will also need to install pymatgen and the Atomic Simulation Environment (ASE). 
+Anaconda convers all the basic requirements. If you intend to use the --read_cif_pymatgen option you will also need to install pymatgen and the Atomic Simulation Environment (ASE). 
 Install instructions for pymatgen can be found here: https://pymatgen.org/installation.html.
 Install instructions for ASE can be found here: https://wiki.fysik.dtu.dk/ase/install.html.
 
