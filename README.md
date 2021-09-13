@@ -48,7 +48,14 @@ The CIF cell will be replicated to the shape QxRxS or to have atleast N atoms, i
 ```
 Switches ON reading the inputs CIFs using pymatgen i/o. This can be used to read most CIF formats. The bond topology will also be determined using the Atomic Simulation Environment (ASE).
 Keep in mind that this might not work as expected in all cases. Bonds are typed in this scheme according to length, which also may not work as expected (use with caution).
-
+```
+--add_molecule molname,model,N
+```
+Used to add write molecule file and include this molecule in the main simulation. Molname is the name of the molecule, which must be included in small_molecule_constants.py, model is the name of the model (e.g. TraPPE, this allows multiple models to be implemented for the same molecule), and N is the number of molecules to insert into the system (can be 0).
+```
+--small_molecule_file file
+```
+The name of a file (currently only RASPA pdb format is supported) containing an initial configuration of small molecules, which are added into the provided CIF(s). The molecules are assigned force field parameters according to small_molecule_force_field. Bonds are automatically calculated.
 ## Requirements
 Anaconda convers all the basic requirements. If you intend to use the --read_cif_pymatgen option you will also need to install pymatgen and the Atomic Simulation Environment (ASE). 
 Install instructions for pymatgen can be found here: https://pymatgen.org/installation.html.
